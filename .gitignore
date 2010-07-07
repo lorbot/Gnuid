@@ -1,0 +1,6 @@
+gnuid-opt
+.depend
+*.o
+*.xdr
+*.vtu
+

@@ -1,0 +1,122 @@
+# number of boundaries where dirichlet boundary conditions are to be imposed
+n_velocity_boundaries = 1
+
+# section to be included (with all the variables up to []) for each velocity boundary
+# section must be numbered in increasing order, e.g. [vel_bc_00], [vel_bc_01]...
+[vel_bc_00]
+inlet_outlet = inlet
+
+# id associated with element faces located on this boundary (the id must match with the one specified in the .xda mesh file)
+vel_bc_id = 2
+
+vel_bc_radius = 2.523388
+
+vel_bc_center_x = 41.545319
+vel_bc_center_y = 23.835188
+vel_bc_center_z = 27.319384
+
+vel_bc_normal_i = -0.411432
+vel_bc_normal_j = 0.202442
+vel_bc_normal_k = 0.888674
+
+# mass flow (or Reynolds number) scaling factor 
+# If scaling=0.1 10% of the inflow, (or outflow), average velocity
+# is considered in order to compute the velocity profile
+scaling = 1
+
+# Number of fourier modes required to approximate the behavior
+# of the flow rate over the cardiac cycle. Velocity is computed
+# by means of the inverse womersley method.
+# 1 fourier modes is for steady state simulation
+n_fourier_modes = 1
+
+# real part of the firts fourier mode (always = 1 in order to avoid a scaling effect)
+f_mode_00_re = 1.
+
+# imaginary part of the firts fourier mode (always = 0)
+f_mode_00_im = 0.
+[]
+
+# number of boundaries where traction-free boundary conditions are to be imposed
+n_pressure_boundaries = 1
+
+# section to be included (with all the variables up to []) for each pressure boundary
+# section must be numbered in increasing order, e.g. [press_bc_00], [press_bc_01]...
+[press_bc_00]
+# id associated with element faces located on this boundary (the id must match with the one specified in the .xda mesh file)
+press_bc_id = 3
+[]
+
+# value of the mass flow (when this option is used Re_number=0)
+mass_flow = 0
+
+# value of the Reynolds number (when this option is used mass_flow=0)
+Re_number = 300 
+
+# id associated with element faces located on the wall where no-sleep homegeneous 
+# boundary conditions are imposed (the id must match with the one specified in the .xda mesh file)
+wall_id = 1
+
+# IP penalty parameter (penalty>=0, 4 is suggested)
+penalty = 4.       
+
+density = 1       # [g/cm3]
+
+viscosity = 1    # [poise]
+
+# time step
+dt = 0.001          # [s]
+
+velocity_approximation_order = 1
+
+pressure_approximation_order = 1
+
+# when pressure_approximation_order=2 the lagrangian basis functions implementation
+# requires to work with a second order mesh.
+# if a first order grid is available use this parameter to obtain a second order approximation of the geometry.
+first_to_second_order_mesh = false
+
+# !=0 when we want to restart a simulation from a certatin state 
+# saved in an equation_systems file (set read_es_file=true)
+step = 0  
+
+# !=0 when restarting a simulation, time = step * dt
+time = 0.           
+
+# period of the cardiac cycle, to be set for pulsatile simulations
+period = 10 
+
+# number of time steps 
+n_timesteps = 2000 
+
+linear_solver_maximum_iterations = 2000
+
+linear_solver_tolerance = 1.e-8
+
+# uniformely refine the grid n times
+n_uniform_refinement_steps = 0
+
+n_steps_between_solution_output = 1
+
+n_steps_between_equation_system_output = 10 
+
+# switch to second order backward differentiation formula 
+# for time derivative discretization after some steps.
+# first order BDF is recommended in the first bunch 
+# if the field is initialized with zero velocity and pressure
+second_order_start_step = 40 
+
+# switch to a fully implicit discretization of 
+# the advetion-diffusion step after some steps. 
+# This requires convergence of the Newton method within each time step
+# A semi-implicit discretization is useful in the first bunch
+n_washin_steps = 2 
+
+# true when restarting a simulation
+read_es_file = false 
+
+# mesh file to be read
+mesh_file = ./P0086_sip01_exmesh3.xda
+
+# equation sistem file to be read when restarting a simulation
+es_file = ./gnuid_es_000050.xdr

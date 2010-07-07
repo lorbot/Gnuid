@@ -1,0 +1,131 @@
+n_velocity_boundaries = 1
+
+[vel_bc_00]
+inlet_outlet = inlet
+
+vel_bc_id = 3
+
+vel_bc_radius = 0.2226362
+
+vel_bc_center_x = 4.8007141
+vel_bc_center_y = -0.1898469
+vel_bc_center_z = 1.9982210
+
+vel_bc_normal_i = 0.118399
+vel_bc_normal_j = -0.950967
+vel_bc_normal_k = 0.285733
+
+scaling = 1
+
+n_fourier_modes = 11
+
+f_mode_00_re = 1.
+
+f_mode_00_im = 0.
+
+f_mode_01_re = 0.041275
+
+f_mode_01_im = 0.152844
+
+f_mode_02_re = -0.006424
+
+f_mode_02_im = -0.121517
+
+f_mode_03_re = 0.057946
+
+f_mode_03_im = 0.073805
+
+f_mode_04_re = -0.052655
+
+f_mode_04_im = -0.017654
+
+f_mode_05_re = 0.034584
+
+f_mode_05_im = -0.010970
+
+f_mode_06_re = -0.003375 
+
+f_mode_06_im = 0.021820
+
+f_mode_07_re = -0.014239 
+
+f_mode_07_im = -0.000403
+
+f_mode_08_re = 0.003614 
+
+f_mode_08_im = -0.011576
+
+f_mode_09_re = 0.007116
+
+f_mode_09_im = 0.004348
+
+f_mode_10_re = -0.001206
+
+f_mode_10_im = -0.000945
+[]
+
+n_pressure_boundaries = 1
+
+[press_bc_00]
+press_bc_id = 2
+[]
+
+mass_flow = 0
+
+Re_number = 500 
+
+wall_id = 1
+
+penalty = 4.       
+
+penalty_p = 0.1       
+
+density = 1.06      # [g/cm3]
+
+viscosity = 0.035    # [poise]
+
+dt = 0.0025        # [s]
+
+step = 0             # !=0 when restarting a simulation
+
+time = 0.           # !=0 when restarting a simulation, time = step * dt
+
+period = 1 
+
+n_timesteps = 1201 
+
+linear_solver_maximum_iterations = 4000 
+
+linear_solver_tolerance = 1.e-8
+
+n_uniform_refinement_steps = 0
+
+n_adaptive_refinement_steps = 0
+
+n_steps_between_each_adaptive_refinement = 5
+
+refine_fraction = 0.7
+
+coarsen_fraction = 0.1
+
+max_h_refinement_level = 1
+
+node_level_mismatch_limit = 1
+
+elements_target = 190000
+
+coarsen_by_parents = true
+
+n_steps_between_solution_output = 1
+
+n_steps_between_equation_system_output = 50 
+
+second_order_start_step = 60 
+
+n_washin_steps = 60 
+
+read_es_file = false 
+
+mesh_file = ./P0086_sip03_meshbl_cm.xda
+
+es_file = ./gnuid_es_000050.xdr

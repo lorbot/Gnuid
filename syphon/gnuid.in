@@ -1,0 +1,79 @@
+n_velocity_boundaries = 1
+
+[vel_bc_00]
+inlet_outlet = inlet
+
+vel_bc_id = 3
+
+vel_bc_radius = 0.2226362
+
+vel_bc_center_x = 4.8007141
+vel_bc_center_y = -0.1898469
+vel_bc_center_z = 1.9982210
+
+vel_bc_normal_i = 0.118399
+vel_bc_normal_j = -0.950967
+vel_bc_normal_k = 0.285733
+
+scaling = 1
+
+n_fourier_modes = 1
+
+f_mode_00_re = 1.
+
+f_mode_00_im = 0.
+[]
+
+n_pressure_boundaries = 1
+
+[press_bc_00]
+press_bc_id = 2
+[]
+
+mass_flow = 0
+
+Re_number = 300 
+
+wall_id = 1
+
+penalty = 4.       
+
+density = 1.06      # [g/cm3]
+
+viscosity = 0.035    # [poise]
+
+dt = 0.001        # [s]
+
+velocity_approximation_order = 1
+
+pressure_approximation_order = 1
+
+first_to_second_order_mesh = false
+
+step = 0             # !=0 when restarting a simulation
+
+time = 0.           # !=0 when restarting a simulation, time = step * dt
+
+period = 10 
+
+n_timesteps = 2000 
+
+linear_solver_maximum_iterations = 4000 
+
+linear_solver_tolerance = 1.e-8
+
+n_uniform_refinement_steps = 0
+
+n_steps_between_solution_output = 1
+
+n_steps_between_equation_system_output = 50 
+
+second_order_start_step = 20 
+
+n_washin_steps = 2 
+
+read_es_file = false 
+
+mesh_file = ./P0086_sip03_meshbl_cm.xda
+
+es_file = ./gnuid_es_000050.xdr
