@@ -27,10 +27,11 @@
 #include "mesh_output.h"
 #include "elem.h"
 
+using namespace libMesh;
 
 // Forward declarations
-class MeshBase;
-class MeshData;
+class libMesh::MeshBase;
+class libMesh::MeshData;
 
 class VTKIO_NOVTK : public MeshInput<MeshBase>,
 	      public MeshOutput<MeshBase>

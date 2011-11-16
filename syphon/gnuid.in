@@ -56,11 +56,15 @@ time = 0.           # !=0 when restarting a simulation, time = step * dt
 
 period = 10 
 
-n_timesteps = 2000 
+n_timesteps = 5
 
 linear_solver_maximum_iterations = 4000 
 
 linear_solver_tolerance = 1.e-8
+
+nonlinear_solver_maximum_iterations = 10
+
+nonlinear_solver_tolerance = 1.e-1
 
 n_uniform_refinement_steps = 0
 

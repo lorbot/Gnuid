@@ -46,6 +46,8 @@
 
 //#define QORDER TENTH 
 
+using namespace libMesh;
+
 void NS_DG_Solver::init()
 {
   EquationSystems& es = this->system();
@@ -84,6 +86,9 @@ void NS_DG_Solver::solve()
   Real time = es.parameters.get<Real>("time");
   const unsigned int n_timesteps = es.parameters.get<unsigned int>("n timesteps");
   const unsigned int n_washin_steps = es.parameters.get<unsigned int>("n washin steps");
+  const unsigned int max_nonlinear_steps = es.parameters.get<unsigned int>("nonlinear solver maximum iterations");
+  const Real nonlinear_tolerance = es.parameters.get<Real>("nonlinear solver tolerance");
+  unsigned int n_nonlinear_steps = 0;
 
   TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
   TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
@@ -91,10 +96,6 @@ void NS_DG_Solver::solve()
   MeshBase& mesh = es.get_mesh();
 
   VTKIO_NOVTK vtk_io(mesh);
-
-  unsigned int n_nonlinear_steps = 0;
-  const Real nonlinear_tolerance       = 1.e-2;
-
 
   std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
   systemPProj.solve();
@@ -112,14 +113,14 @@ void NS_DG_Solver::solve()
     
     es.parameters.set<Real>("time") = time;
     es.parameters.set<unsigned int>("step") = step;
-  
-    std::cout << "################ Solving time step " << step << ", time = " << time << std::endl <<std::endl;
+
+    std::cout<<"################ Solving time step "<<step<<" of "<<n_timesteps<<", time is "<<time<<std::endl;
 
     *systemAdvDiff.older_local_solution = *systemAdvDiff.old_local_solution;
     *systemAdvDiff.old_local_solution = *systemAdvDiff.current_local_solution;
    
     if (step > n_washin_steps)
-      n_nonlinear_steps = 10;
+      n_nonlinear_steps = max_nonlinear_steps;
     else
       n_nonlinear_steps = 1;
  
@@ -181,6 +182,7 @@ void NS_DG_Solver::solve()
       sprintf(filenamemesh,"gnuid_mesh_%06d.xdr",step);
       mesh.write(working_directory + "/" + filenamemesh);
     }
+    std::cout<<"################ End of time step"<<std::endl<<std::endl;
   }
 }
 
@@ -245,6 +247,7 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
   const std::vector<Real>& JxW_face = fe_elem_face->get_JxW();
   const std::vector<Point>& qface_normals = fe_elem_face->get_normals();
   const std::vector<Point >& qface_points = fe_elem_face->get_xyz();
+  std::vector<Point> qface_neighbor_point;
     
   const std::vector<std::vector<Real> >&  phi_neighbor_face = fe_neighbor_face->get_phi();
   const std::vector<std::vector<RealGradient> >& dphi_neighbor_face = fe_neighbor_face->get_dphi();
@@ -392,18 +395,18 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
           Fe_u(i) += JxW[qp]*(1./dt)*phi[i][qp]*(2 * u_old - 0.5 * u_older);
           Fe_v(i) += JxW[qp]*(1./dt)*phi[i][qp]*(2 * v_old - 0.5 * v_older);
           Fe_w(i) += JxW[qp]*(1./dt)*phi[i][qp]*(2 * w_old - 0.5 * w_older);
-          Fe_u(i) -= JxW[qp] * phi[i][qp] * ((7./3.) * grad_p_current(0) - (5./3.) * grad_p_old(0) + (1./3.) * grad_p_older(0)); 
-          Fe_v(i) -= JxW[qp] * phi[i][qp] * ((7./3.) * grad_p_current(1) - (5./3.) * grad_p_old(1) + (1./3.) * grad_p_older(1)); 
-          Fe_w(i) -= JxW[qp] * phi[i][qp] * ((7./3.) * grad_p_current(2) - (5./3.) * grad_p_old(2) + (1./3.) * grad_p_older(2)); 
+          Fe_u(i) -= JxW[qp] * phi[i][qp] * (1./density) * ((7./3.) * grad_p_current(0) - (5./3.) * grad_p_old(0) + (1./3.) * grad_p_older(0)); 
+          Fe_v(i) -= JxW[qp] * phi[i][qp] * (1./density) * ((7./3.) * grad_p_current(1) - (5./3.) * grad_p_old(1) + (1./3.) * grad_p_older(1)); 
+          Fe_w(i) -= JxW[qp] * phi[i][qp] * (1./density) * ((7./3.) * grad_p_current(2) - (5./3.) * grad_p_old(2) + (1./3.) * grad_p_older(2)); 
         }
         else
         {
           Fe_u(i) += JxW[qp]*(1./dt)*phi[i][qp]*(u_old);
           Fe_v(i) += JxW[qp]*(1./dt)*phi[i][qp]*(v_old);
           Fe_w(i) += JxW[qp]*(1./dt)*phi[i][qp]*(w_old);
-          Fe_u(i) -= JxW[qp] * phi[i][qp] * (2. * grad_p_current(0) - grad_p_old(0)); 
-          Fe_v(i) -= JxW[qp] * phi[i][qp] * (2. * grad_p_current(1) - grad_p_old(1)); 
-          Fe_w(i) -= JxW[qp] * phi[i][qp] * (2. * grad_p_current(2) - grad_p_old(2)); 
+          Fe_u(i) -= JxW[qp] * phi[i][qp] * (1./density) * (2. * grad_p_current(0) - grad_p_old(0)); 
+          Fe_v(i) -= JxW[qp] * phi[i][qp] * (1./density) * (2. * grad_p_current(1) - grad_p_old(1)); 
+          Fe_w(i) -= JxW[qp] * phi[i][qp] * (1./density) * (2. * grad_p_current(2) - grad_p_old(2)); 
         }
         if (step > n_washin_steps)
         {
@@ -494,11 +497,10 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
         const unsigned int neighbor_id = neighbor->id();
         if ((neighbor->active() && (neighbor->level() == elem->level()) && (elem_id < neighbor_id)) || (neighbor->level() < elem->level()))
         {
-          std::vector<Point> qface_neighbor_point;
-          std::vector<Point > qface_point;
+          AutoPtr<Elem> elem_side (elem->build_side(side));
           fe_elem_face->reinit(elem, side);
-          qface_point = fe_elem_face->get_xyz();
-          FEInterface::inverse_map (elem->dim(), fe->get_fe_type(), neighbor, qface_point, qface_neighbor_point);
+	  unsigned int side_neighbor = neighbor->which_neighbor_am_i(elem);
+          fe_neighbor_face->side_map (neighbor, elem_side.get(), side_neighbor, qface.get_points(), qface_neighbor_point);
           fe_neighbor_face->reinit(neighbor, &qface_neighbor_point);
 
           const unsigned int elem_b_order = static_cast<unsigned int>(fe_elem_face->get_order());
@@ -774,7 +776,7 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
     systemAdvDiff.rhs->add_vector(Fe_v, dof_indices_v);
     systemAdvDiff.rhs->add_vector(Fe_w, dof_indices_w);
   }
-  std::cout << "done" << std::endl;
+  std::cout<<"done"<<std::endl;
 }
 
 void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& system_name)
@@ -786,6 +788,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
   
   const MeshBase& mesh = es.get_mesh();
   const unsigned int dim = 3;
+  const Real density = es.parameters.get<Real>("density");
   const Real dt= es.parameters.get<Real> ("dt");   
   const Real t = es.parameters.get<Real>("time");
   const Real step = es.parameters.get<unsigned int>("step");
@@ -841,6 +844,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
   const std::vector<Real>& JxW_face = fe_elem_face->get_JxW();
   const std::vector<Point>& qface_normals = fe_elem_face->get_normals();
   const std::vector<Point >& qface_points = fe_elem_face->get_xyz();
+  std::vector<Point> qface_neighbor_point;
   
   const DofMap & dof_map = systemPProj.get_dof_map();
   const DofMap & dof_map_u = systemAdvDiff.get_dof_map();
@@ -908,7 +912,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
           Ke_p(i,j) += JxW[qp]*(dpsi[i][qp]*dpsi[j][qp]);
         }
         Fe_p(i) += JxW[qp] * (grad_p_old * dpsi[i][qp]);
-        Fe_p(i) -= JxW[qp] * ((1.0/dt) * psi[i][qp] * divU_extr);
+        Fe_p(i) -= JxW[qp] * ((density/dt) * psi[i][qp] * divU_extr);
       }
     }
     for (unsigned int side=0; side<elem->n_sides(); side++)
@@ -941,7 +945,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
           {
             for (unsigned int i=0; i<n_p_e_dofs; i++)
             {
-               Fe_p(i) += JxW_face[qp] * (1.0/dt) * u_n_jump * psi_face[i][qp];
+               Fe_p(i) += JxW_face[qp] * (density/dt) * u_n_jump * psi_face[i][qp];
             }          
           }
           else
@@ -966,12 +970,11 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
         const unsigned int neighbor_id = neighbor->id();
         if ((neighbor->active() && (neighbor->level() == elem->level()) && (elem_id < neighbor_id)) || (neighbor->level() < elem->level()))
         {
-          std::vector<Point> qface_neighbor_point;
-          std::vector<Point > qface_point;
+          AutoPtr<Elem> elem_side (elem->build_side(side));
           fe_elem_face->reinit(elem, side);
           fe_elem_face_p->reinit(elem, side);
-          qface_point = fe_elem_face->get_xyz();
-          FEInterface::inverse_map (elem->dim(), fe->get_fe_type(), neighbor, qface_point, qface_neighbor_point);
+	  unsigned int side_neighbor = neighbor->which_neighbor_am_i(elem);
+          fe_neighbor_face->side_map (neighbor, elem_side.get(), side_neighbor, qface.get_points(), qface_neighbor_point);
           fe_neighbor_face->reinit(neighbor, &qface_neighbor_point);
           fe_neighbor_face_p->reinit(neighbor, &qface_neighbor_point);
 
@@ -1010,12 +1013,12 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
               u_n_jump = (u_n - u_n_neighbor);
             for (unsigned int i=0; i<n_p_e_dofs; i++)          // elem elem matrix
             {
-              Fee_p(i) += 0.5 * (1.0/dt) * JxW_face[qp] * u_n_jump * psi_face[i][qp];
+              Fee_p(i) += 0.5 * (density/dt) * JxW_face[qp] * u_n_jump * psi_face[i][qp];
             }
 
             for (unsigned int i=0; i<n_p_n_dofs; i++) // neighbor neighbor matrix
             {
-              Fnn_p(i) += 0.5  * (1.0/dt) * JxW_face[qp] * u_n_jump * psi_neighbor_face[i][qp];
+              Fnn_p(i) += 0.5  * (density/dt) * JxW_face[qp] * u_n_jump * psi_neighbor_face[i][qp];
             }
           }
           systemPProj.rhs->add_vector(Fee_p, dof_indices_p);
@@ -1026,7 +1029,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
     systemPProj.matrix->add_matrix(Ke_p, dof_indices_p);
     systemPProj.rhs->add_vector(Fe_p, dof_indices_p);
   }
-  std::cout << "done" << std::endl;
+  std::cout<<"done"<<std::endl;
 }
     
 void NS_DG_Solver::ns_dg_dirichlet_bc(EquationSystems& es, const Elem* elem, const unsigned int side, const Point& point, const Real& t, RealVectorValue& U_bc, bool& dirichlet)

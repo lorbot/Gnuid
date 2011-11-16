@@ -25,6 +25,8 @@
 #include "equation_systems.h"
 #include "numeric_vector.h"
 
+using namespace libMesh;
+
 void VTKIO_NOVTK::cell_connectivity (const Elem* elem, std::vector<unsigned int>& vtk_cell_connectivity)
 {
   switch(elem->type())

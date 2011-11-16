@@ -32,6 +32,7 @@
 #include "equation_systems.h"
 #include "ns_dg_solver.h"
 
+using namespace libMesh;
 int main (int argc, char** argv)
 {
   LibMeshInit init (argc, argv);
@@ -185,6 +186,18 @@ int main (int argc, char** argv)
        identified_variables.push_back("linear_solver_tolerance");
     }
     else std::cerr<<"Missing variable linear_solver_tolerance, using default value. Check your input file."<<std::endl;
+    if (input_file.have_variable("nonlinear_solver_maximum_iterations"))
+    {
+       equation_systems.parameters.set<unsigned int>("nonlinear solver maximum iterations") = input_file("nonlinear_solver_maximum_iterations", 10);
+       identified_variables.push_back("nonlinear_solver_maximum_iterations");
+    }
+    else std::cerr<<"Missing variable nonlinear_solver_maximum_iterations, using default value. Check your input file."<<std::endl;
+    if (input_file.have_variable("nonlinear_solver_tolerance"))
+    {
+       equation_systems.parameters.set<Real>("nonlinear solver tolerance") = input_file("nonlinear_solver_tolerance", 1.e-1);
+       identified_variables.push_back("nonlinear_solver_tolerance");
+    }
+    else std::cerr<<"Missing variable nonlinear_solver_tolerance, using default value. Check your input file."<<std::endl;
     if (input_file.have_variable("n_steps_between_solution_output"))
     {
        equation_systems.parameters.set<unsigned int>("write output interval") = input_file("n_steps_between_solution_output",100);

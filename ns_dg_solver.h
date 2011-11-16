@@ -23,8 +23,12 @@
 #include "libmesh.h"
 #include "elem.h"
 #include "vector_value.h"
+#include "equation_systems.h"
 
-class EquationSystems;
+
+using namespace libMesh;
+
+class libMesh::EquationSystems;
 
 class NS_DG_Solver 
 {

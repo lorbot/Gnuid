@@ -93,6 +93,10 @@ linear_solver_maximum_iterations = 2000
 
 linear_solver_tolerance = 1.e-8
 
+nonlinear_solver_maximum_iterations = 10
+
+nonlinear_solver_tolerance = 1.e-1
+
 # uniformely refine the grid n times
 n_uniform_refinement_steps = 0
 
