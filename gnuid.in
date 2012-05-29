@@ -27,10 +27,12 @@ scaling = 1
 # Number of fourier modes required to approximate the behavior
 # of the flow rate over the cardiac cycle. Velocity is computed
 # by means of the inverse womersley method.
-# 1 fourier modes is for steady state simulation
+# Set one fourier mode for steady state computations.
+# For unsteady computations gnuid expects a series of Fourier modes that 
+# approximate a periodic normalized flow over the cardiac cycle.
 n_fourier_modes = 1
 
-# real part of the firts fourier mode (always = 1 in order to avoid a scaling effect)
+# real part of the first fourier mode (always = 1 in order to avoid a scaling effect)
 f_mode_00_re = 1.
 
 # imaginary part of the firts fourier mode (always = 0)
@@ -83,7 +85,8 @@ step = 0
 # !=0 when restarting a simulation, time = step * dt
 time = 0.           
 
-# period of the cardiac cycle, to be set for pulsatile simulations
+# period of the cardiac cycle, to be set for pulsatile simulations 
+# (usually to recover the Womersley number corresponding to the pulsatile input flow signal)
 period = 10 
 
 # number of time steps 
