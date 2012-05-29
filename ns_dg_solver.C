@@ -1104,7 +1104,7 @@ void NS_DG_Solver::ns_dg_dirichlet_bc(EquationSystems& es, const Elem* elem, con
               char vel_bc_f_mode[1024];
               sprintf(vel_bc_f_mode,"vel_bc_%02d_f_mode_%02d",i,k);
               Complex f_mode_k = es.parameters.get<Complex>(vel_bc_f_mode);
-              Real alpha = vel_bc_Radius * sqrt((2.*libMesh::pi/t_period)/viscosity);
+              Real alpha = vel_bc_Radius * sqrt((2.*libMesh::pi/t_period)/(viscosity/density));
               Complex c_i = Complex(0,1);
 
               Complex c_a = C_op::RCmul(alpha * sqrt(1.0*k), C_op::Cmul(c_i, sqrt(c_i)));  
