@@ -95,7 +95,7 @@ void NS_DG_Solver::solve()
 
   MeshBase& mesh = es.get_mesh();
 
-  VTKIO_NOVTK vtk_io(mesh);
+  VTKDiscontinuousWriter vtk_io;
 
   std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
   systemPProj.solve();
@@ -165,10 +165,13 @@ void NS_DG_Solver::solve()
     const unsigned int write_solution_interval = es.parameters.get<unsigned int>("write output interval");
     if (step%write_solution_interval == 0)
     {
-      vtk_io.write_refined_mesh(true);
-      char filenamevtk[1024];
-      sprintf(filenamevtk,"gnuid_%06d.vtu",step);
-      vtk_io.write_equation_systems(working_directory + "/" + filenamevtk,es);
+      std::vector<Real> local_solution;
+      vtk_io.build_discontinuous_solution_vector(mesh, es, local_solution);
+      vtk_io.write_ascii(working_directory, step, mesh, local_solution);
+      //char filenamevtk[1024];
+      //vtk_io.write_refined_mesh(true);
+      //sprintf(filenamevtk,"gnuid_%06d.vtu",step);
+      //vtk_io.write_equation_systems(working_directory + "/" + filenamevtk,es);
     }
     
     const unsigned int write_es_interval = es.parameters.get<unsigned int>("write es interval");

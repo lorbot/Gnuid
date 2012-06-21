@@ -4,4 +4,5 @@ bkp
 *.o
 *.xdr
 *.vtu
+*.pvtu
 

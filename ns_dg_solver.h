@@ -24,6 +24,7 @@
 #include "elem.h"
 #include "vector_value.h"
 #include "equation_systems.h"
+#include "VTKDiscontinuousWriter.h"
 
 
 using namespace libMesh;

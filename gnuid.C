@@ -52,9 +52,6 @@ int main (int argc, char** argv)
     
     Mesh mesh (dim);
 
-    MeshData mesh_data(mesh);
-    mesh_data.activate();
-
     std::string mesh_file;
     if (input_file.have_variable("mesh_file"))
     {
@@ -63,7 +60,7 @@ int main (int argc, char** argv)
     }
     else std::cerr<<"Missing variable mesh_file. Check your input file."<<std::endl;
 
-    mesh.read (working_directory + "/" + mesh_file, &mesh_data);
+    mesh.read (working_directory + "/" + mesh_file);
     
     bool second_order_mesh = false;
     if (input_file.have_variable("first_to_second_order_mesh"))
@@ -78,10 +75,7 @@ int main (int argc, char** argv)
     }
     
     mesh.print_info();
-    mesh_data.print_info();
-
     EquationSystems equation_systems (mesh);
-    
     NS_DG_Solver ns_dg_Solver(equation_systems);
     
     if (input_file.have_variable("penalty"))
