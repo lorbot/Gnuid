@@ -198,6 +198,18 @@ int main (int argc, char** argv)
        identified_variables.push_back("n_steps_between_solution_output");
     }
     else std::cerr<<"Missing variable n_steps_between_solution_output, using default value. Check your input file."<<std::endl;
+    if (input_file.have_variable("write_continuous"))
+    {
+       equation_systems.parameters.set<bool>("write continuous") = input_file("write_continuous",true);
+       identified_variables.push_back("write_continuous");
+    }
+    else std::cerr<<"Missing variable write_continuous, using default value. Check your input file"<<std::endl;
+    if (input_file.have_variable("write_discontinuous"))
+    {
+       equation_systems.parameters.set<bool>("write discontinuous") = input_file("write_discontinuous",false);
+       identified_variables.push_back("write_discontinuous");
+    }
+    else std::cerr<<"Missing variable write_discontinuous, using default value. Check your input file"<<std::endl;
     if (input_file.have_variable("n_steps_between_equation_system_output"))
     {
        equation_systems.parameters.set<unsigned int>("write es interval") = input_file("n_steps_between_equation_system_output",100);

@@ -41,8 +41,7 @@
 #include "error_vector.h"
 #include "discontinuity_measure.h"
 #include "petsc_linear_solver.h"
-
-#include "vtk_io_vtk_indip.h"
+#include "VTKWriter.h"
 
 //#define QORDER TENTH 
 
@@ -67,9 +66,9 @@ void NS_DG_Solver::init()
      Order v_libmesh = static_cast<Order>(v_order);
      Order p_libmesh = static_cast<Order>(p_order);
      TransientLinearImplicitSystem & systemAdvDiff = es.add_system<TransientLinearImplicitSystem> ("AdvDiff");
-     systemAdvDiff.add_variable ("u", v_libmesh, MONOMIAL);
-     systemAdvDiff.add_variable ("v", v_libmesh, MONOMIAL);
-     systemAdvDiff.add_variable ("w", v_libmesh, MONOMIAL);
+     systemAdvDiff.add_variable ("u", v_libmesh, XYZ);
+     systemAdvDiff.add_variable ("v", v_libmesh, XYZ);
+     systemAdvDiff.add_variable ("w", v_libmesh, XYZ);
      systemAdvDiff.attach_assemble_function (NS_DG_Solver::assemble_adv_diff);
      TransientLinearImplicitSystem & systemPProj = es.add_system<TransientLinearImplicitSystem> ("PProj");
      systemPProj.add_variable ("p", p_libmesh, LAGRANGE);
@@ -88,22 +87,24 @@ void NS_DG_Solver::solve()
   const unsigned int n_washin_steps = es.parameters.get<unsigned int>("n washin steps");
   const unsigned int max_nonlinear_steps = es.parameters.get<unsigned int>("nonlinear solver maximum iterations");
   const Real nonlinear_tolerance = es.parameters.get<Real>("nonlinear solver tolerance");
+  bool write_continuous = es.parameters.get<bool>("write continuous");
+  bool write_discontinuous = es.parameters.get<bool>("write discontinuous");
+  const unsigned int write_solution_interval = es.parameters.get<unsigned int>("write output interval");
+  const unsigned int write_es_interval = es.parameters.get<unsigned int>("write es interval");
   unsigned int n_nonlinear_steps = 0;
 
   TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
   TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
 
   MeshBase& mesh = es.get_mesh();
-
-  VTKDiscontinuousWriter vtk_io;
-
+  VTKWriter vtk_io;
+  
   std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
   systemPProj.solve();
   
   std::cout<<"number of linear iterations = "<<systemPProj.n_linear_iterations()<<std::endl;
   std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
   std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
-
 
   unsigned int step = es.parameters.get<unsigned int>("step");
   for (; step<n_timesteps; ++step)
@@ -162,19 +163,21 @@ void NS_DG_Solver::solve()
     std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
     std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
 
-    const unsigned int write_solution_interval = es.parameters.get<unsigned int>("write output interval");
     if (step%write_solution_interval == 0)
     {
       std::vector<Real> local_solution;
-      vtk_io.build_discontinuous_solution_vector(mesh, es, local_solution);
-      vtk_io.write_ascii(working_directory, step, mesh, local_solution);
-      //char filenamevtk[1024];
-      //vtk_io.write_refined_mesh(true);
-      //sprintf(filenamevtk,"gnuid_%06d.vtu",step);
-      //vtk_io.write_equation_systems(working_directory + "/" + filenamevtk,es);
+      if (write_discontinuous)
+      {
+        vtk_io.build_discontinuous_solution_vector(mesh, es, local_solution);
+        vtk_io.write_ascii_discontinuous(working_directory, step, mesh, local_solution);
+      }
+      if (write_continuous) 
+      {
+        vtk_io.build_continuous_solution_vector(mesh, es, local_solution);
+        vtk_io.write_ascii_continuous(working_directory, step, mesh, local_solution);
+      }
     }
     
-    const unsigned int write_es_interval = es.parameters.get<unsigned int>("write es interval");
     if (step%write_es_interval == 0)
     {
       es.allgather();    
@@ -1094,7 +1097,7 @@ void NS_DG_Solver::ns_dg_dirichlet_bc(EquationSystems& es, const Elem* elem, con
         }
         else if (Re_number == 0 && mass_flow != 0)
         {
-           u_mean = scaling * mass_flow/(libMesh::pi*R_sq); 
+           u_mean = scaling * mass_flow/(density*libMesh::pi*R_sq); 
         }
         if (R_sq - r_sq > 0.0)
         {

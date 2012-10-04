@@ -2,7 +2,7 @@
 
 
 # The location of the mesh library
-LIBMESH_DIR = ~/src2/libmesh_svn/libmesh/
+LIBMESH_DIR = ~/src2/libmesh-0.7.3.1/libmesh/
 
 # include the library options determined by configure.  This will
 # set the variables INCLUDE and LIBS that we will need to build and

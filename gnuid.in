@@ -20,8 +20,8 @@ vel_bc_normal_j = 0.202442
 vel_bc_normal_k = 0.888674
 
 # mass flow (or Reynolds number) scaling factor 
-# If scaling=0.1 10% of the inflow, (or outflow), average velocity
-# is considered in order to compute the velocity profile
+# If scaling=0.1 10% of the mass flow (or Re number) 
+# is used to compute the average velocity
 scaling = 1
 
 # Number of fourier modes required to approximate the behavior
@@ -104,6 +104,16 @@ nonlinear_solver_tolerance = 1.e-1
 n_uniform_refinement_steps = 0
 
 n_steps_between_solution_output = 1
+
+# write averaged velocity and wss at nodes (.vtu paraview serial format)
+write_continuous = true
+
+# write discontinuous velocity and wss 
+#(the nodes are duplicated, the connectivity is lost, .pvtu paraview parallel format)
+write_discontinuous = false
+
+# write C0 averaged velocity solution at nodes
+write_continuous = true
 
 n_steps_between_equation_system_output = 10 
 
