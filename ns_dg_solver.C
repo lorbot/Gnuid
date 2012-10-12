@@ -66,9 +66,9 @@ void NS_DG_Solver::init()
      Order v_libmesh = static_cast<Order>(v_order);
      Order p_libmesh = static_cast<Order>(p_order);
      TransientLinearImplicitSystem & systemAdvDiff = es.add_system<TransientLinearImplicitSystem> ("AdvDiff");
-     systemAdvDiff.add_variable ("u", v_libmesh, XYZ);
-     systemAdvDiff.add_variable ("v", v_libmesh, XYZ);
-     systemAdvDiff.add_variable ("w", v_libmesh, XYZ);
+     systemAdvDiff.add_variable ("u", v_libmesh, MONOMIAL);
+     systemAdvDiff.add_variable ("v", v_libmesh, MONOMIAL);
+     systemAdvDiff.add_variable ("w", v_libmesh, MONOMIAL);
      systemAdvDiff.attach_assemble_function (NS_DG_Solver::assemble_adv_diff);
      TransientLinearImplicitSystem & systemPProj = es.add_system<TransientLinearImplicitSystem> ("PProj");
      systemPProj.add_variable ("p", p_libmesh, LAGRANGE);
