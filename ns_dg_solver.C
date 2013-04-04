@@ -94,7 +94,11 @@ void NS_DG_Solver::solve()
   unsigned int n_nonlinear_steps = 0;
 
   TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
+  systemAdvDiff.linear_solver.get()->set_solver_type(GMRES);
+//  systemAdvDiff.linear_solver.get()->set_preconditioner_type(ASM_PRECOND);
   TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
+  systemPProj.linear_solver.get()->set_solver_type(BICGSTAB);
+//  systemPProj.linear_solver.get()->set_preconditioner_type(ASM_PRECOND);
 
   MeshBase& mesh = es.get_mesh();
   VTKWriter vtk_io;
