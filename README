@@ -20,7 +20,16 @@ run make
 
 Go to the syphon directory for an example  
 run 
-mpiexec -n <number_of_processes> ../gnuid-opt ./ -ksp_gmres_restart <number_of_krylov_spaces(default 30, 60 or more for large scale simulations)>
+mpiexec -n <number_of_processes> ../gnuid-opt ./ 
+
+common solver options 
+-ksp_gmres_restart <number_of_krylov_spaces(default 30, 60 or more for large scale simulations)> 
+
+common preconditioner options
+if <number_of_processes> is big use -pc_type asm -pc_asm_overlap <default 1, use 2 or 3>
+
+for example
+mpiexec -n 32 ../gnuid-opt ./ -ksp_gmres_restart 60 -pc_type asm -pc_asm_overlap 2
 ###################################################################################################################################################
 
 The following paper describes in detail the Gnuid temporal and spatial discretization 
