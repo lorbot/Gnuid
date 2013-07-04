@@ -20,10 +20,10 @@
 
 #include <iostream>
 #include "math.h"
-#include "libmesh.h"
-#include "elem.h"
-#include "vector_value.h"
-#include "equation_systems.h"
+#include "libmesh/libmesh.h"
+#include "libmesh/elem.h"
+#include "libmesh/vector_value.h"
+#include "libmesh/equation_systems.h"
 //#include "VTKDiscontinuousWriter.h"
 
 

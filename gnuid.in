@@ -112,9 +112,6 @@ write_continuous = true
 #(the nodes are duplicated, the connectivity is lost, .pvtu paraview parallel format)
 write_discontinuous = false
 
-# write C0 averaged velocity solution at nodes
-write_continuous = true
-
 n_steps_between_equation_system_output = 10 
 
 # switch to second order backward differentiation formula 
@@ -130,7 +127,7 @@ second_order_start_step = 40
 n_washin_steps = 2 
 
 # true when restarting a simulation
-read_es_file = false 
+read_es_file = true
 
 # mesh file to be read
 mesh_file = ./P0086_sip01_exmesh3.xda

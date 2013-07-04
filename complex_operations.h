@@ -19,7 +19,7 @@
 #define __complex_operations__
 
 #include "math.h"
-#include "libmesh.h"
+#include "libmesh/libmesh.h"
 
 namespace C_op 
 {
@@ -157,6 +157,6 @@ namespace C_op
   
      return zanswer;
   }
-};
+}
 
 #endif

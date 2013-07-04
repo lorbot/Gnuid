@@ -1,13 +1,13 @@
-# $Id: Makefile 3101 2008-10-16 19:34:03Z roystgnr $
+######################################################################
+#
+# Template libMesh application Makefile
+LIBMESH_DIR ?= /Users/ihabia/src2/libmesh/libmesh_build
 
 
-# The location of the mesh library
-LIBMESH_DIR = ~/src2/libmesh-0.7.3.1/libmesh/
-
-# include the library options determined by configure.  This will
-# set the variables INCLUDE and LIBS that we will need to build and
-# link with the library.
+# include the library options determined by configure
 include $(LIBMESH_DIR)/Make.common
+
+target     := ./gnuid-$(METHOD)
 
 
 ###############################################################################
@@ -25,56 +25,67 @@ objects		:= $(patsubst %.C, %.$(obj-suffix), $(srcfiles))
 
 
 
-.PHONY: clean clobber distclean
+.PHONY: dust clean distclean
 
 ###############################################################################
 # Target:
 #
-target 	   := ./gnuid-$(METHOD)
 
+all:: $(notdir $(target))
 
-all:: $(target)
-
-# Production rules:  how to make the target
-$(target): $(objects)
+# Production rules:  how to make the target - depends on library configuration
+$(notdir $(target)): $(objects)
 	@echo "Linking "$@"..."
-	@$(libmesh_CXX) $(libmesh_CXXFLAGS) $(objects) -o $@ $(libmesh_LIBS) $(libmesh_LDFLAGS)
+	@$(libmesh_LIBTOOL) --tag=CXX $(LIBTOOLFLAGS) --mode=link \
+	  $(libmesh_CXX) $(libmesh_CXXFLAGS) $(objects) -o $@ $(libmesh_LIBS) $(libmesh_LDFLAGS) $(EXTERNAL_FLAGS)
 
 
 # Useful rules.
-clean:
-	@rm -f $(objects) *~
+dust:
+	@echo "Deleting old output and runtime files"
+	@rm -f out*.m job_output.txt output.txt* *.gmv.* *.plt.* out*.xdr* out*.xda* PI* complete
 
-clobber:
-	@$(MAKE) clean
+clean: dust
+	@rm -f $(objects) *.$(obj-suffix)
+
+clobber: clean 
 	@rm -f $(target)
 
-distclean:
-	@$(MAKE) clobber
-	@rm -f *.o *.g.o *.pg.o
+distclean: clean
+	@rm -rf *.o .libs .depend
 
-run: $(target)
+echo:
+	@echo srcfiles = $(srcfiles)
+	@echo objects = $(objects)
+	@echo target = $(target)
+
+run: complete
+
+complete: $(wildcard *.in)
+#	@$(MAKE) dust
+	@$(MAKE) -C $(dir $(target)) $(notdir $(target))
 	@echo "***************************************************************"
-	@echo "* Running Example " $(LIBMESH_RUN) $(target) -d 3 $(LIBMESH_DIR)/reference_elements/3D/one_hex27.xda $(LIBMESH_OPTIONS)
+	@echo "* Running App " $(notdir $(target))
 	@echo "***************************************************************"
 	@echo " "
-	@$(LIBMESH_RUN) $(target) -d 3 $(LIBMESH_DIR)/reference_elements/3D/one_hex27.xda $(LIBMESH_OPTIONS)
+	${LIBMESH_RUN} $(target) ${LIBMESH_OPTIONS} 2>&1 | tee output.txt
+	@bzip2 -f output.txt
 	@echo " "
 	@echo "***************************************************************"
-	@echo "* Done Running Example " $(LIBMESH_RUN) $(target) -d 3 $(LIBMESH_DIR)/reference_elements/3D/one_hex27.xda $(LIBMESH_OPTIONS)
+	@echo "* Done Running App " $(notdir $(target))
 	@echo "***************************************************************"
 
+gmv:
+	@$(MAKE) -C $(LIBMESH_DIR)/roy/meshplot/ meshplot-$(METHOD)
+	@for file in out.mesh.*; do ${LIBMESH_RUN} $(LIBMESH_DIR)/roy/meshplot/meshplot-$(METHOD) $$file out.soln.$${file##out.mesh.} out.gmv.$${file:9:4}; done
 
 # include the dependency list
 include .depend
 
-
 #
 # Dependencies
 #
-.depend:
-	@$(perl) $(LIBMESH_DIR)/contrib/bin/make_dependencies.pl -I. $(foreach i, $(wildcard $(LIBMESH_DIR)/include/*), -I$(i)) "-S\$$(obj-suffix)" $(srcfiles) > .depend
-	@$(perl) -pi -e 's#    $(LIBMESH_DIR)#    \$$\(LIBMESH_DIR\)#' .depend
-	@echo "Updated .depend"
+.depend: $(srcfiles) $(LIBMESH_DIR)/include/libmesh/*.h
+	@$(perl) $(LIBMESH_DIR)/contrib/bin/make_dependencies.pl -I. $(foreach i, $(LIBMESH_DIR)/include $(wildcard $(LIBMESH_DIR)/include/*), -I$(i)) "-S\$$(obj-suffix)" $(srcfiles) > .depend
 
 ###############################################################################

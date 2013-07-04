@@ -17,31 +17,32 @@
 
 #include "ns_dg_solver.h"
 
-#include "mesh.h"
-#include "elem.h"
-#include "equation_systems.h"
-#include "transient_system.h"
-#include "fe.h"
-#include "quadrature_gauss.h"
-#include "dof_map.h"
-#include "sparse_matrix.h"
-#include "dense_matrix.h"
-#include "dense_vector.h"
-#include "dense_submatrix.h"
-#include "dense_subvector.h"
-#include "numeric_vector.h"
-#include "linear_implicit_system.h"
-#include "boundary_info.h"
-#include "coupling_matrix.h"
-#include "fe_interface.h"
-#include "utility.h"
+#include "libmesh/mesh.h"
+#include "libmesh/elem.h"
+#include "libmesh/equation_systems.h"
+#include "libmesh/transient_system.h"
+#include "libmesh/fe.h"
+#include "libmesh/quadrature_gauss.h"
+#include "libmesh/dof_map.h"
+#include "libmesh/sparse_matrix.h"
+#include "libmesh/dense_matrix.h"
+#include "libmesh/dense_vector.h"
+#include "libmesh/dense_submatrix.h"
+#include "libmesh/dense_subvector.h"
+#include "libmesh/numeric_vector.h"
+#include "libmesh/linear_implicit_system.h"
+#include "libmesh/boundary_info.h"
+#include "libmesh/coupling_matrix.h"
+#include "libmesh/fe_interface.h"
+#include "libmesh/utility.h"
 
-#include "complex_operations.h"
-#include "mesh_refinement.h"
-#include "error_vector.h"
-#include "discontinuity_measure.h"
-#include "petsc_linear_solver.h"
+#include "libmesh/mesh_refinement.h"
+#include "libmesh/error_vector.h"
+#include "libmesh/discontinuity_measure.h"
+#include "libmesh/petsc_linear_solver.h"
+
 #include "VTKWriter.h"
+#include "complex_operations.h"
 
 //#define QORDER TENTH 
 
@@ -103,14 +104,18 @@ void NS_DG_Solver::solve()
   MeshBase& mesh = es.get_mesh();
   VTKWriter vtk_io;
   
-  std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
-  systemPProj.solve();
-  
-  std::cout<<"number of linear iterations = "<<systemPProj.n_linear_iterations()<<std::endl;
-  std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
-  std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
-
   unsigned int step = es.parameters.get<unsigned int>("step");
+  step++;
+  if (!es.parameters.get<bool>("read es file"))
+  {
+     std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
+     systemPProj.solve();
+  
+     std::cout<<"number of linear iterations = "<<systemPProj.n_linear_iterations()<<std::endl;
+     std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
+     std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
+  }
+
   for (; step<n_timesteps; ++step)
   {
     const Real dt = es.parameters.get<Real>("dt");

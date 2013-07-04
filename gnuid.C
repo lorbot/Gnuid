@@ -19,17 +19,17 @@
 #include <algorithm>
 #include <math.h>
 
-#include "libmesh.h"
+#include "libmesh/libmesh.h"
 
-#include "mesh.h"
-#include "mesh_data.h"
-#include "point.h"
-#include "perf_log.h"
-#include "getpot.h"
+#include "libmesh/mesh.h"
+#include "libmesh/mesh_data.h"
+#include "libmesh/point.h"
+#include "libmesh/perf_log.h"
+#include "libmesh/getpot.h"
 
-#include "mesh_refinement.h"
-#include "mesh_tools.h"
-#include "equation_systems.h"
+#include "libmesh/mesh_refinement.h"
+#include "libmesh/mesh_tools.h"
+#include "libmesh/equation_systems.h"
 #include "ns_dg_solver.h"
 
 using namespace libMesh;

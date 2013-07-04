@@ -7,17 +7,18 @@
 #include <fstream>
 
 // Local includes
-#include "mesh_base.h"
-#include "elem.h"
-#include "mesh.h"
-#include "dof_map.h"
-#include "equation_systems.h"
-#include "system.h"
-#include "parallel.h"
-#include "fe.h"
+#include "libmesh/mesh_base.h"
+#include "libmesh/elem.h"
+#include "libmesh/mesh.h"
+#include "libmesh/dof_map.h"
+#include "libmesh/equation_systems.h"
+#include "libmesh/system.h"
+#include "libmesh/parallel.h"
+#include "libmesh/fe.h"
 
-#include "fe_interface.h"
+#include "libmesh/fe_interface.h"
 
+using namespace libMesh;
 
 class VTKWriter 
 {
