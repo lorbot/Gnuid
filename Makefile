@@ -1,7 +1,7 @@
 ######################################################################
 #
 # Template libMesh application Makefile
-LIBMESH_DIR ?= /Users/ihabia/src2/libmesh/libmesh_build
+LIBMESH_DIR ?= /Users/ihabia/src2/libmesh-0.9.2.1/libmesh_build
 
 
 # include the library options determined by configure
@@ -43,7 +43,7 @@ $(notdir $(target)): $(objects)
 # Useful rules.
 dust:
 	@echo "Deleting old output and runtime files"
-	@rm -f out*.m job_output.txt output.txt* *.gmv.* *.plt.* out*.xdr* out*.xda* PI* complete
+	@rm -f *.vtu *.pvtu *.xdr *.xda complete
 
 clean: dust
 	@rm -f $(objects) *.$(obj-suffix)
@@ -74,10 +74,6 @@ complete: $(wildcard *.in)
 	@echo "***************************************************************"
 	@echo "* Done Running App " $(notdir $(target))
 	@echo "***************************************************************"
-
-gmv:
-	@$(MAKE) -C $(LIBMESH_DIR)/roy/meshplot/ meshplot-$(METHOD)
-	@for file in out.mesh.*; do ${LIBMESH_RUN} $(LIBMESH_DIR)/roy/meshplot/meshplot-$(METHOD) $$file out.soln.$${file##out.mesh.} out.gmv.$${file:9:4}; done
 
 # include the dependency list
 include .depend

@@ -50,13 +50,13 @@ pressure_approximation_order = 1
 
 first_to_second_order_mesh = false
 
-step = 0             # !=0 when restarting a simulation
+step = 24             # !=0 when restarting a simulation
 
-time = 0.0           # !=0 when restarting a simulation, time = step * dt
+time = 0.024           # !=0 when restarting a simulation, time = step * dt
 
 period = 10 
 
-n_timesteps = 30
+n_timesteps = 100 
 
 linear_solver_maximum_iterations = 4000 
 
@@ -76,12 +76,12 @@ write_discontinuous = true
 
 n_steps_between_equation_system_output = 1
 
-second_order_start_step = 10 
+second_order_start_step = 20 
 
 n_washin_steps = 2
 
-read_es_file = false 
+read_es_file = true
 
-mesh_file = ./P0086_sip03_meshbl_cm.xda
+mesh_file = ./gnuid_mesh_000024.xdr
 
-es_file = ./gnuid_es_000011.xdr
+es_file = ./gnuid_es_000024.xdr
