@@ -81,6 +81,7 @@ void GnuidBCHelper::init_dirichletprofile_bc(EquationSystems& es, const int& lid
      sprintf(vel_bc_f_mode,"vel_bc_%02d_f_mode_%02d",lid,k);
      _f_modes[k] = es.parameters.get<Complex>(vel_bc_f_mode);
   }
+  _u_mean = 0.;
   if (Re_number != 0 && mass_flow == 0)
   {
      _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _vel_bc_Radius);
