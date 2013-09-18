@@ -1,9 +1,52 @@
-# number of boundaries where dirichlet boundary conditions are to be imposed
+# Number of boundaries where dirichlet velocity boundary conditions are to be imposed
+# Velocity profiles are imposed according to Poiseuille (steady) or Womersley (pulsatile) solutions.
 n_velocity_boundaries = 1
 
-# section to be included (with all the variables up to []) for each velocity boundary
+# section to be included for each velocity boundary
 # section must be numbered in increasing order, e.g. [vel_bc_00], [vel_bc_01]...
 [vel_bc_00]
+inlet_outlet = inlet
+
+# id associated with element faces located on this boundary (the id must match with the one specified in the .xda mesh file)
+vel_bc_id = 2
+
+vel_bc_radius = 2.523388
+
+vel_bc_center_x = 41.545319
+vel_bc_center_y = 23.835188
+vel_bc_center_z = 27.319384
+
+vel_bc_normal_i = -0.411432
+vel_bc_normal_j = 0.202442
+vel_bc_normal_k = 0.888674
+
+# mass flow (or Reynolds number) scaling factor 
+# If scaling=0.1 10% of the mass flow (or Re number) 
+# is used to compute the average velocity
+scaling = 1
+
+# Number of fourier modes required to approximate the behavior
+# of the flow rate over the cardiac cycle. Velocity is computed
+# by means of the inverse womersley method.
+# Set one fourier mode for steady state computations.
+# For unsteady computations gnuid expects a series of Fourier modes that 
+# approximate a periodic normalized flow over the cardiac cycle.
+n_fourier_modes = 1
+
+# real part of the first fourier mode (always = 1 in order to avoid a scaling effect)
+f_mode_00_re = 1.
+
+# imaginary part of the firts fourier mode (always = 0)
+f_mode_00_im = 0.
+[]
+
+# Number of boundaries where flow defective dirichlet boundary conditions are to be imposed
+# As opposite to velocity dirichlet boundary conditions the velocity profile is not specified
+n_flow_defective_boundaries = 0
+
+# section to be included for each flow defective boundary
+# section must be numbered in increasing order, e.g. [flow_bc_00], [flow_bc_01]...
+[flow_bc_00]
 inlet_outlet = inlet
 
 # id associated with element faces located on this boundary (the id must match with the one specified in the .xda mesh file)

@@ -15,38 +15,24 @@
 /* License along with this software; if not, write to the Free Software */
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
 
-#ifndef __ns_dg_solver__
-#define __ns_dg_solver__
+#ifndef __gnuid_input_reader__
+#define __gnuid_input_reader__
 
 #include <iostream>
 #include "math.h"
 #include "libmesh/libmesh.h"
-#include "libmesh/elem.h"
-#include "libmesh/vector_value.h"
 #include "libmesh/equation_systems.h"
+#include "libmesh/mesh.h"
 
 using namespace libMesh;
 
-//class libMesh::EquationSystems;
-
-class NS_DG_Solver 
+struct GnuidInputReader 
 {
-public:
-
-  NS_DG_Solver(EquationSystems& es): _system(es) {} 
-  ~NS_DG_Solver() {}
+  GnuidInputReader() {} 
+  ~GnuidInputReader() {}
   
-  void init();
-  void solve();
-  EquationSystems & system () const { return _system; }
-
-  std::string working_directory;
-
-protected:
-  static void assemble_adv_diff(EquationSystems& es, const std::string& system_name);
-  static void assemble_p_proj(EquationSystems& es, const std::string& system_name);
-
-  EquationSystems& _system;
+  static void read_mesh(Mesh& mesh, const std::string& workingDir);
+  static void read_es(EquationSystems& es, const std::string& workingDir);
 };
 
 #endif

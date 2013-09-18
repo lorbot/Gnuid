@@ -15,38 +15,37 @@
 /* License along with this software; if not, write to the Free Software */
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
 
-#ifndef __ns_dg_solver__
-#define __ns_dg_solver__
+#ifndef __gnuid_bc_helper__
+#define __gnuid_bc_helper__
 
 #include <iostream>
 #include "math.h"
 #include "libmesh/libmesh.h"
-#include "libmesh/elem.h"
-#include "libmesh/vector_value.h"
 #include "libmesh/equation_systems.h"
+#include "libmesh/mesh.h"
 
 using namespace libMesh;
 
-//class libMesh::EquationSystems;
-
-class NS_DG_Solver 
+class GnuidBCHelper 
 {
-public:
-
-  NS_DG_Solver(EquationSystems& es): _system(es) {} 
-  ~NS_DG_Solver() {}
+  public:
+  GnuidBCHelper() {} 
+  ~GnuidBCHelper() {}
   
-  void init();
-  void solve();
-  EquationSystems & system () const { return _system; }
-
-  std::string working_directory;
-
-protected:
-  static void assemble_adv_diff(EquationSystems& es, const std::string& system_name);
-  static void assemble_p_proj(EquationSystems& es, const std::string& system_name);
-
-  EquationSystems& _system;
+  void init_dirichletprofile_bc(EquationSystems& es, const int& lid);
+  void compute_dirichletprofile_bc(const Point& point, const Real& t, RealVectorValue& U_bc);
+  static void bc_type_and_lid(const EquationSystems& es,  const unsigned int boundary_id, std::string& , int& lid);
+  
+  private:
+  Real _t_period;
+  Real _u_mean;
+  Real _alpha;
+  Real _vel_bc_Radius;
+  std::string _vel_bc_Type;
+  VectorValue<Real> _vel_bc_Normal;
+  Point _vel_bc_Center;
+  Real _scaling;
+  std::vector<Complex> _f_modes;
 };
 
 #endif

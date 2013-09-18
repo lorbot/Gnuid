@@ -1,3 +1,5 @@
+n_flow_defective_boundaries = 0
+
 n_velocity_boundaries = 1
 
 [vel_bc_00]

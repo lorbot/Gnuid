@@ -14,9 +14,6 @@
 /* You should have received a copy of the GNU Lesser General Public */
 /* License along with this software; if not, write to the Free Software */
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
-
-#include "ns_dg_solver.h"
-
 #include "libmesh/mesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/equation_systems.h"
@@ -35,14 +32,12 @@
 #include "libmesh/coupling_matrix.h"
 #include "libmesh/fe_interface.h"
 #include "libmesh/utility.h"
-
-#include "libmesh/mesh_refinement.h"
 #include "libmesh/error_vector.h"
-#include "libmesh/discontinuity_measure.h"
 #include "libmesh/petsc_linear_solver.h"
 
+#include "ns_dg_solver.h"
 #include "VTKWriter.h"
-#include "complex_operations.h"
+#include "gnuid_bcHelper.h"
 
 //#define QORDER TENTH 
 
@@ -80,7 +75,6 @@ void NS_DG_Solver::init()
 
 void NS_DG_Solver::solve()
 {
-
   EquationSystems& es = this->system();
 
   Real time = es.parameters.get<Real>("time");
@@ -210,6 +204,7 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
   
   const MeshBase& mesh = es.get_mesh();
   const unsigned int dim = mesh.mesh_dimension();
+  GnuidBCHelper bcHelper;
   
   TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
   const unsigned int u_var = systemAdvDiff.variable_number ("u");
@@ -435,34 +430,42 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
     {
       if (elem->neighbor(side) == NULL)
       {
-        fe_elem_face->reinit(elem, side);
-
-        Real sideVolume = 0.;
-        for (unsigned int qp = 0; qp < qface.n_points(); qp++)
-        {
-          sideVolume += JxW_face[qp];
-        }
-        const unsigned int elem_b_order = static_cast<unsigned int> (fe_elem_face->get_order());
-        double h = elemVolume/(sideVolume*elem->n_sides()*pow(elem_b_order,2.));
-        
-        for (unsigned int qp=0; qp<qface.n_points(); qp++)
-        {
+        const unsigned short boundary_id = mesh.boundary_info->boundary_id(elem,side);
+	std::string bc_type;
+	int lid;
+        bcHelper.bc_type_and_lid(es, boundary_id, bc_type, lid);
+	int dirichletProfile = bc_type.compare("dirichlet_profile");
+	int dirichletWall    = bc_type.compare("dirichlet_wall");
+        if (dirichletProfile == 0 || dirichletWall == 0)
+	{
           RealVectorValue U_bc;
-          bool dirichlet;
-          ns_dg_dirichlet_bc(es,elem,side,qface_points[qp],t,U_bc,dirichlet);
-          Real u = 0.;
-          Real v = 0.;
-          Real w = 0.;
-          for (unsigned int i=0; i<n_uvwp_e_dofs; i++)
+          if (dirichletProfile == 0)
+	    bcHelper.init_dirichletprofile_bc(es, lid);
+	  else if (dirichletWall == 0)
+	    U_bc.zero();
+          Real sideVolume = 0.;
+          for (unsigned int qp = 0; qp < qface.n_points(); qp++)
           {
-             u += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
-             v += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
-             w += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
+            sideVolume += JxW_face[qp];
           }
-          const Real u_n = u * qface_normals[qp](0) + v * qface_normals[qp](1) + w * qface_normals[qp](2);
-          const Real u_bc_n = U_bc(0) * qface_normals[qp](0) + U_bc(1) * qface_normals[qp](1) + U_bc(2) * qface_normals[qp](2);
-          if (dirichlet)
+          const unsigned int elem_b_order = static_cast<unsigned int> (fe_elem_face->get_order());
+          double h = elemVolume/(sideVolume*elem->n_sides()*pow(elem_b_order,2.));
+          
+          for (unsigned int qp=0; qp<qface.n_points(); qp++)
           {
+	    if (dirichletProfile == 0)
+              bcHelper.compute_dirichletprofile_bc(qface_points[qp],t,U_bc);
+            const Real u_bc_n = U_bc(0) * qface_normals[qp](0) + U_bc(1) * qface_normals[qp](1) + U_bc(2) * qface_normals[qp](2);
+            Real u = 0.;
+            Real v = 0.;
+            Real w = 0.;
+            for (unsigned int i=0; i<n_uvwp_e_dofs; i++)
+            {
+               u += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
+               v += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
+               w += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
+            }
+            const Real u_n = u * qface_normals[qp](0) + v * qface_normals[qp](1) + w * qface_normals[qp](2);
             for (unsigned int i=0; i<n_uvwp_e_dofs; i++)
             {
                for (unsigned int j=0; j<n_uvwp_e_dofs; j++)
@@ -800,6 +803,7 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
   std::cout.flush();
 
   libmesh_assert (system_name == "PProj");
+  GnuidBCHelper bcHelper;
   
   const MeshBase& mesh = es.get_mesh();
   const unsigned int dim = 3;
@@ -934,46 +938,57 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
     {
       if (elem->neighbor(side) == NULL)
       {
-        fe_elem_face->reinit(elem, side);
-        fe_elem_face_p->reinit(elem, side);
-
-        for (unsigned int qp=0; qp<qface.n_points(); qp++)
-        {
+        const unsigned short boundary_id = mesh.boundary_info->boundary_id(elem,side);
+	std::string bc_type;
+	int lid;
+        bcHelper.bc_type_and_lid(es, boundary_id, bc_type, lid);
+	int dirichletProfile = bc_type.compare("dirichlet_profile");
+	int dirichletWall    = bc_type.compare("dirichlet_wall");
+        if (dirichletProfile  == 0 || dirichletWall == 0)
+	{
+          fe_elem_face->reinit(elem, side);
+          fe_elem_face_p->reinit(elem, side);
           RealVectorValue U_bc;
-          bool dirichlet;
-          ns_dg_dirichlet_bc(es,elem,side,qface_points[qp],t,U_bc,dirichlet);
-          const Real u_bc_n = U_bc * qface_normals[qp];
-          RealVectorValue U (0.,0.,0.); 
-          for (unsigned int i=0; i<n_uvw_e_dofs; i++)
+          if (dirichletProfile == 0)
+	    bcHelper.init_dirichletprofile_bc(es, lid);
+	  else if (dirichletWall == 0)
+	    U_bc.zero();
+          for (unsigned int qp=0; qp<qface.n_points(); qp++)
           {
-             U(0) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
-             U(1) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
-             U(2) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
-          }
-          const Real u_n = U * qface_normals[qp];
-          Real u_n_jump = 0.;
-          if (step > n_second_order_start_step)
-            u_n_jump = (3./2.) * (u_n - u_bc_n);
-          else
-            u_n_jump = (u_n - u_bc_n);
-          if (dirichlet)
-          {
-            for (unsigned int i=0; i<n_p_e_dofs; i++)
+            if (dirichletProfile == 0)
+              bcHelper.compute_dirichletprofile_bc(qface_points[qp],t,U_bc);
+            const Real u_bc_n = U_bc * qface_normals[qp];
+            RealVectorValue U (0.,0.,0.); 
+            for (unsigned int i=0; i<n_uvw_e_dofs; i++)
             {
-               Fe_p(i) += JxW_face[qp] * (density/dt) * u_n_jump * psi_face[i][qp];
-            }          
+              U(0) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
+              U(1) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
+              U(2) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
+            }
+            const Real u_n = U * qface_normals[qp];
+            Real u_n_jump = 0.;
+            if (step > n_second_order_start_step)
+              u_n_jump = (3./2.) * (u_n - u_bc_n);
+            else
+              u_n_jump = (u_n - u_bc_n);
+            for (unsigned int i=0; i<n_p_e_dofs; i++)
+              Fe_p(i) += JxW_face[qp] * (density/dt) * u_n_jump * psi_face[i][qp];
           }
-          else
+	}
+	else if (bc_type.compare("neumann") == 0)
+	{
+          fe_elem_face_p->reinit(elem, side);
+          for (unsigned int qp=0; qp<qface.n_points(); qp++)
           {
             Real penalty_bc = 1e10;
             Real pressure_outlet = 0.;
             for (unsigned int i=0; i<n_p_e_dofs; i++)
             {
-               for (unsigned int j=0; j<n_p_e_dofs; j++)
-               {
-                 Ke_p(i,j) += JxW_face[qp] * penalty_bc * psi_face[i][qp] * psi_face[j][qp];
-               }
-               Fe_p(i) += JxW_face[qp] * pressure_outlet * penalty_bc * psi_face[i][qp];
+              for (unsigned int j=0; j<n_p_e_dofs; j++)
+              {
+                Ke_p(i,j) += JxW_face[qp] * penalty_bc * psi_face[i][qp] * psi_face[j][qp];
+              }
+              Fe_p(i) += JxW_face[qp] * pressure_outlet * penalty_bc * psi_face[i][qp];
             }          
           }
         }
@@ -1045,115 +1060,4 @@ void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& syste
     systemPProj.rhs->add_vector(Fe_p, dof_indices_p);
   }
   std::cout<<"done"<<std::endl;
-}
-    
-void NS_DG_Solver::ns_dg_dirichlet_bc(EquationSystems& es, const Elem* elem, const unsigned int side, const Point& point, const Real& t, RealVectorValue& U_bc, bool& dirichlet)
-{
-  const unsigned short wall_id = es.parameters.get<unsigned short>("wall id");
-  const Real Re_number = es.parameters.get<Real>("Re number");
-  const Real mass_flow = es.parameters.get<Real>("mass flow");
-  const Real density = es.parameters.get<Real>("density");
-  const Real viscosity = es.parameters.get<Real>("viscosity");
-  const Real t_period = es.parameters.get<Real>("t period");
-  const unsigned int n_washin_steps = es.parameters.get<unsigned int>("n washin steps");
-  const unsigned int step = es.parameters.get<unsigned int>("step");
-  
-  const MeshBase& mesh = es.get_mesh();
-  const unsigned short boundary_id = mesh.boundary_info->boundary_id(elem,side);
-  
-  if (boundary_id == wall_id)
-  {
-    U_bc.zero();
-    dirichlet = true;
-  }
-  else
-  {
-    for (unsigned int i = 0; i < es.parameters.get<unsigned int>("n vel bound"); i++)
-    {
-      char vel_bc_id[1024];
-      char vel_bc_type[1024];
-      char vel_bc_center[1024];
-      char vel_bc_radius[1024];
-      char vel_bc_normal[1024];
-      char vel_bc_scaling[1024];
-      char vel_bc_n_fourier_modes[1024];
-      sprintf(vel_bc_id,"vel_bc_%02d_id",i);
-      sprintf(vel_bc_type,"vel_bc_%02d_type",i);
-      sprintf(vel_bc_center,"vel_bc_%02d_center",i);
-      sprintf(vel_bc_radius,"vel_bc_%02d_radius",i);
-      sprintf(vel_bc_normal,"vel_bc_%02d_normal",i);
-      sprintf(vel_bc_scaling,"vel_bc_%02d_scaling",i);
-      sprintf(vel_bc_n_fourier_modes,"vel_bc_%02d_n_fourier_modes",i);
-      Real vel_bc_Radius = es.parameters.get<Real>(vel_bc_radius);
-      std::string vel_bc_Type = es.parameters.get<std::string>(vel_bc_type);
-      VectorValue<Real> vel_bc_Normal = es.parameters.get<VectorValue<Real> >(vel_bc_normal);
-      Point vel_bc_Center = es.parameters.get<Point>(vel_bc_center);
-      Real scaling = es.parameters.get<Real>(vel_bc_scaling);
-
-      if (scaling > 1.0)
-        {
-        std::cout<<step<<"    "<<n_washin_steps<<"    "<<scaling<<std::endl;
-        }
-
-      if (boundary_id == es.parameters.get<unsigned short>(vel_bc_id))
-      {
-        Real u_mean = 0.;
-        const Real r_sq = (point - vel_bc_Center).size_sq();
-        const Real R_sq = vel_bc_Radius * vel_bc_Radius;
-        if (Re_number != 0 && mass_flow == 0)
-        {
-           u_mean = scaling * (Re_number * viscosity)/(density * 2.0 * vel_bc_Radius);
-        }
-        else if (Re_number == 0 && mass_flow != 0)
-        {
-           u_mean = scaling * mass_flow/(density*libMesh::pi*R_sq); 
-        }
-        if (R_sq - r_sq > 0.0)
-        {
-           char vel_bc_f_mode_00[1024];
-           sprintf(vel_bc_f_mode_00,"vel_bc_%02d_f_mode_00",i);
-           Complex f_mode_00 = es.parameters.get<Complex>(vel_bc_f_mode_00);
-           Real u = 2. * ((R_sq - r_sq)/R_sq) * f_mode_00.real();
-           for (unsigned int k =1; k < es.parameters.get<unsigned int>(vel_bc_n_fourier_modes); k++)
-           {
-              char vel_bc_f_mode[1024];
-              sprintf(vel_bc_f_mode,"vel_bc_%02d_f_mode_%02d",i,k);
-              Complex f_mode_k = es.parameters.get<Complex>(vel_bc_f_mode);
-              Real alpha = vel_bc_Radius * sqrt((2.*libMesh::pi/t_period)/(viscosity/density));
-              Complex c_i = Complex(0,1);
-
-              Complex c_a = C_op::RCmul(alpha * sqrt(1.0*k), C_op::Cmul(c_i, sqrt(c_i)));  
-              Complex c_a_2 = C_op::RCmul(sqrt(r_sq)/vel_bc_Radius, c_a);
-                                                                       
-              Complex c_t = Complex(0, 2.*libMesh::pi*k*t/t_period);
-              Complex c_f10 = C_op::RCmul(2., C_op::Cdiv(C_op::Cbes(1,c_a), C_op::Cmul(C_op::Cbes(0,c_a),c_a)));
-              Complex c_const = C_op::Cdiv(C_op::Cmul(f_mode_k, C_op::Cexp(c_t)), Complex(1. - c_f10.real(), 0. - c_f10.imag()));
-              Complex c_u = C_op::Cmul(c_const, Complex(1.0 - C_op::Cdiv(C_op::Cbes(0,c_a_2), C_op::Cbes(0,c_a)).real(),
-                                                        0.0 - C_op::Cdiv(C_op::Cbes(0,c_a_2), C_op::Cbes(0,c_a)).imag()));
-              u += c_u.real();        
-              
-           }                                                            
-           if (vel_bc_Type == "inlet")                               
-           {                                                            
-              U_bc.assign((-1) * vel_bc_Normal * u * u_mean);
-           }                                                           
-           else if (vel_bc_Type == "outlet")
-           {
-              U_bc.assign(vel_bc_Normal * u * u_mean);
-           }
-        }
-        else
-        {
-            U_bc.zero();
-        }
-        dirichlet = true;
-        return;
-      }
-      else
-      {
-        U_bc.zero();
-        dirichlet = false;
-      }
-    }
-  }
 }
