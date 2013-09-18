@@ -58,7 +58,7 @@ time = 0.0           # !=0 when restarting a simulation, time = step * dt
 
 period = 10 
 
-n_timesteps = 30
+n_timesteps = 4
 
 linear_solver_maximum_iterations = 4000 
 

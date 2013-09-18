@@ -443,6 +443,8 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
 	    bcHelper.init_dirichletprofile_bc(es, lid);
 	  else if (dirichletWall == 0)
 	    U_bc.zero();
+          
+          fe_elem_face->reinit(elem, side);
           Real sideVolume = 0.;
           for (unsigned int qp = 0; qp < qface.n_points(); qp++)
           {
@@ -455,7 +457,6 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
           {
 	    if (dirichletProfile == 0)
               bcHelper.compute_dirichletprofile_bc(qface_points[qp],t,U_bc);
-	    std::cout<<U_bc<<std::endl;
             const Real u_bc_n = U_bc(0) * qface_normals[qp](0) + U_bc(1) * qface_normals[qp](1) + U_bc(2) * qface_normals[qp](2);
             Real u = 0.;
             Real v = 0.;
