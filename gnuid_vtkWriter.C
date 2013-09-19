@@ -1,7 +1,7 @@
 // Local includes
-#include "VTKWriter.h"
+#include "gnuid_vtkWriter.h"
 
-void VTKWriter::cell_connectivity (const Elem* elem, std::vector<unsigned int>& vtk_cell_connectivity)
+void GnuidVTKWriter::cell_connectivity (const Elem* elem, std::vector<unsigned int>& vtk_cell_connectivity)
 {
   switch(elem->type())
   {
@@ -198,7 +198,7 @@ void VTKWriter::cell_connectivity (const Elem* elem, std::vector<unsigned int>& 
   }
 }
 
-unsigned int VTKWriter::cell_offset (const Elem* elem)
+unsigned int GnuidVTKWriter::cell_offset (const Elem* elem)
 {
     std::vector<unsigned int> conn;
     this->cell_connectivity(elem,conn);
@@ -206,7 +206,7 @@ unsigned int VTKWriter::cell_offset (const Elem* elem)
     return conn.size();
 }
 
-unsigned int VTKWriter::cell_type(const Elem* elem)
+unsigned int GnuidVTKWriter::cell_type(const Elem* elem)
 {
   unsigned int celltype = 0; // initialize to something to avoid compiler warning
   
@@ -280,7 +280,7 @@ unsigned int VTKWriter::cell_type(const Elem* elem)
   return celltype;
 }
 
-void VTKWriter::write_ascii_discontinuous(const std::string& work_dir, const unsigned int& step, const MeshBase& mesh, const std::vector<double>& soln)
+void GnuidVTKWriter::write_ascii_discontinuous(const std::string& work_dir, const unsigned int& step, const MeshBase& mesh, const std::vector<double>& soln)
 { 
   unsigned int dim = mesh.spatial_dimension();
   std::vector<std::string> names;
@@ -436,7 +436,7 @@ void VTKWriter::write_ascii_discontinuous(const std::string& work_dir, const uns
   fclose (pFile);       
 } 
 
-void VTKWriter::write_ascii_continuous(const std::string& work_dir, const unsigned int& step, const MeshBase& mesh, const std::vector<double>& soln)
+void GnuidVTKWriter::write_ascii_continuous(const std::string& work_dir, const unsigned int& step, const MeshBase& mesh, const std::vector<double>& soln)
 { 
   if (libMesh::processor_id() == 0)
   {
@@ -548,7 +548,7 @@ void VTKWriter::write_ascii_continuous(const std::string& work_dir, const unsign
   }
 } 
 
-void VTKWriter::build_continuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& soln)
+void GnuidVTKWriter::build_continuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& soln)
 {
   parallel_only();
 
@@ -711,7 +711,7 @@ void VTKWriter::build_continuous_solution_vector(MeshBase& mesh, libMesh::Equati
   Parallel::sum(soln);
 }
 
-void VTKWriter::build_discontinuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& soln)
+void GnuidVTKWriter::build_discontinuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& soln)
 {
   parallel_only();
   

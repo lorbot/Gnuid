@@ -15,8 +15,8 @@
 /* License along with this software; if not, write to the Free Software */
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
 
-#ifndef __complex_operations__
-#define __complex_operations__
+#ifndef __gnuid_cn_helper__
+#define __gnuid_cn_helper__
 
 #include "math.h"
 #include "libmesh/libmesh.h"

@@ -24,7 +24,7 @@
 #include "libmesh/perf_log.h"
 #include "libmesh/equation_systems.h"
 
-#include "ns_dg_solver.h"
+#include "gnuid_solverINS.h"
 #include "gnuid_inputReader.h"
 
 using namespace libMesh;
@@ -47,12 +47,12 @@ int main (int argc, char** argv)
     EquationSystems es (mesh);
     GnuidInputReader::read_es(es, working_directory);
 
-    NS_DG_Solver ns_dg_Solver(es);
-    ns_dg_Solver.init();
-    ns_dg_Solver.working_directory = working_directory;
+    GnuidSolver gnuidSolver(es);
+    gnuidSolver.init();
+    gnuidSolver.working_directory = working_directory;
 
     perf_log.start_event("gnuid");
-    ns_dg_Solver.solve();
+    gnuidSolver.solve();
     perf_log.stop_event("gnuid");
     
     std::cout<<es.parameters<<std::endl;

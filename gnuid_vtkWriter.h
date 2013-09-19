@@ -1,6 +1,6 @@
 
-#ifndef __VTKWriter_h__
-#define __VTKWriter_h__
+#ifndef __gnuid_vtk_writer_h__
+#define __gnuid_vtk_writer_h__
 
 // C++ includes
 #include <map>
@@ -15,20 +15,19 @@
 #include "libmesh/system.h"
 #include "libmesh/parallel.h"
 #include "libmesh/fe.h"
-
 #include "libmesh/fe_interface.h"
 
 using namespace libMesh;
 
-class VTKWriter 
+class GnuidVTKWriter 
 {
 public:
-  VTKWriter () 
+  GnuidVTKWriter () 
   {
     ;
   }
 
-  ~VTKWriter () {}
+  ~GnuidVTKWriter () {}
 
   void write_ascii_discontinuous(const std::string& dir, const unsigned int& step, const MeshBase& mesh, const std::vector<double>& soln);
   
@@ -37,8 +36,8 @@ public:
   void build_discontinuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& solution);
   
   void build_continuous_solution_vector(MeshBase& mesh, libMesh::EquationSystems& systems, std::vector<Real>& solution);
-private:
 
+private:
   void cell_connectivity(const Elem* elem, std::vector<unsigned int>& vtk_cell_connectivity);
   
   unsigned int cell_type(const Elem* elem);

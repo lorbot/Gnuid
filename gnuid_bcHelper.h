@@ -32,11 +32,13 @@ class GnuidBCHelper
   GnuidBCHelper() {} 
   ~GnuidBCHelper() {}
   
-  void init_dirichletprofile_bc(EquationSystems& es, const int& lid);
-  void compute_dirichletprofile_bc(const Point& point, const Real& t, RealVectorValue& U_bc);
-  static void bc_type_and_lid(const EquationSystems& es,  const unsigned int boundary_id, std::string& , int& lid);
+  void init_dirichletIOData(const EquationSystems& es, const unsigned int& lid);
+  void compute_dirichletIOProfile(const Point& point, const Real& t, RealVectorValue& U_bc);
+  void compute_dirichletDefectiveData(const Real& t, RealVectorValue& U_bc, unsigned int& lid);
+  void init_bcData(const EquationSystems& es,  const unsigned int boundary_id, std::string& bc_type);
   
   private:
+  unsigned int _lid;
   Real _t_period;
   Real _u_mean;
   Real _alpha;

@@ -14,6 +14,7 @@
 /* You should have received a copy of the GNU Lesser General Public */
 /* License along with this software; if not, write to the Free Software */
 /* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
+
 #include "libmesh/mesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/equation_systems.h"
@@ -35,167 +36,10 @@
 #include "libmesh/error_vector.h"
 #include "libmesh/petsc_linear_solver.h"
 
-#include "ns_dg_solver.h"
-#include "VTKWriter.h"
+#include "gnuid_solverINS.h"
 #include "gnuid_bcHelper.h"
 
-//#define QORDER TENTH 
-
-using namespace libMesh;
-
-void NS_DG_Solver::init()
-{
-  EquationSystems& es = this->system();
-  if (es.parameters.get<bool>("read es file"))
-  {
-     TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
-     systemAdvDiff.update();
-     systemAdvDiff.attach_assemble_function (NS_DG_Solver::assemble_adv_diff);
-     TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
-     systemPProj.update();
-     systemPProj.attach_assemble_function (NS_DG_Solver::assemble_p_proj);
-  }
-  else
-  {
-     const unsigned int v_order = es.parameters.get<unsigned int>("velocity approx order");
-     const unsigned int p_order = es.parameters.get<unsigned int>("pressure approx order");
-     Order v_libmesh = static_cast<Order>(v_order);
-     Order p_libmesh = static_cast<Order>(p_order);
-     TransientLinearImplicitSystem & systemAdvDiff = es.add_system<TransientLinearImplicitSystem> ("AdvDiff");
-     systemAdvDiff.add_variable ("u", v_libmesh, MONOMIAL);
-     systemAdvDiff.add_variable ("v", v_libmesh, MONOMIAL);
-     systemAdvDiff.add_variable ("w", v_libmesh, MONOMIAL);
-     systemAdvDiff.attach_assemble_function (NS_DG_Solver::assemble_adv_diff);
-     TransientLinearImplicitSystem & systemPProj = es.add_system<TransientLinearImplicitSystem> ("PProj");
-     systemPProj.add_variable ("p", p_libmesh, LAGRANGE);
-     systemPProj.attach_assemble_function (NS_DG_Solver::assemble_p_proj);
-     es.init();
-  }
-}
-
-void NS_DG_Solver::solve()
-{
-  EquationSystems& es = this->system();
-
-  Real time = es.parameters.get<Real>("time");
-  const unsigned int n_timesteps = es.parameters.get<unsigned int>("n timesteps");
-  const unsigned int n_washin_steps = es.parameters.get<unsigned int>("n washin steps");
-  const unsigned int max_nonlinear_steps = es.parameters.get<unsigned int>("nonlinear solver maximum iterations");
-  const Real nonlinear_tolerance = es.parameters.get<Real>("nonlinear solver tolerance");
-  bool write_continuous = es.parameters.get<bool>("write continuous");
-  bool write_discontinuous = es.parameters.get<bool>("write discontinuous");
-  const unsigned int write_solution_interval = es.parameters.get<unsigned int>("write output interval");
-  const unsigned int write_es_interval = es.parameters.get<unsigned int>("write es interval");
-  unsigned int n_nonlinear_steps = 0;
-
-  TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem> ("AdvDiff");
-  systemAdvDiff.linear_solver.get()->set_solver_type(GMRES);
-//  systemAdvDiff.linear_solver.get()->set_preconditioner_type(ASM_PRECOND);
-  TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
-  systemPProj.linear_solver.get()->set_solver_type(BICGSTAB);
-//  systemPProj.linear_solver.get()->set_preconditioner_type(ASM_PRECOND);
-
-  MeshBase& mesh = es.get_mesh();
-  VTKWriter vtk_io;
-  
-  unsigned int step = es.parameters.get<unsigned int>("step");
-  step++;
-  if (!es.parameters.get<bool>("read es file"))
-  {
-     std::cout << "################ Initializing pressure field "<< std::endl <<std::endl;
-     systemPProj.solve();
-  
-     std::cout<<"number of linear iterations = "<<systemPProj.n_linear_iterations()<<std::endl;
-     std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
-     std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
-  }
-
-  for (; step<n_timesteps; ++step)
-  {
-    const Real dt = es.parameters.get<Real>("dt");
-    time += dt;
-    
-    es.parameters.set<Real>("time") = time;
-    es.parameters.set<unsigned int>("step") = step;
-
-    std::cout<<"################ Solving time step "<<step<<" of "<<n_timesteps<<", time is "<<time<<std::endl;
-
-    *systemAdvDiff.older_local_solution = *systemAdvDiff.old_local_solution;
-    *systemAdvDiff.old_local_solution = *systemAdvDiff.current_local_solution;
-   
-    if (step > n_washin_steps)
-      n_nonlinear_steps = max_nonlinear_steps;
-    else
-      n_nonlinear_steps = 1;
- 
-    for (unsigned int l=0; l<n_nonlinear_steps; ++l)
-    {
-      AutoPtr<NumericVector<Number> > last_nonlinear_soln (systemAdvDiff.solution->clone());
-      last_nonlinear_soln->zero();
-      last_nonlinear_soln->add(*systemAdvDiff.solution);
-      
-      systemAdvDiff.solve();
-
-      last_nonlinear_soln->add (-1., *systemAdvDiff.solution);
-
-      last_nonlinear_soln->close();
-      const Real norm_delta = last_nonlinear_soln->l2_norm();
-      const unsigned int n_linear_iterations = systemAdvDiff.n_linear_iterations();
-      const Real final_linear_residual = systemAdvDiff.final_linear_residual();
-      
-      std::cout<<"number of linear iterations = "<<n_linear_iterations<<std::endl;
-      std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemAdvDiff.linear_solver.get()))->get_initial_residual()<<std::endl;
-      std::cout<<"final linear residual = "<<final_linear_residual<<std::endl;
-      std::cout<<"Nonlinear convergence: ||u - u_old|| = "<< norm_delta<< std::endl<<std::endl;
-
-      if ((norm_delta < nonlinear_tolerance) &&
-          (systemAdvDiff.final_linear_residual() < nonlinear_tolerance))
-        {
-          std::cout << " Nonlinear solver converged at step "
-                    << l
-                    << std::endl;
-          break;
-        }
-    } // end nonlinear loop
-    
-    *systemPProj.older_local_solution = *systemPProj.old_local_solution;
-    *systemPProj.old_local_solution = *systemPProj.current_local_solution;
-    systemPProj.solve();
-    
-    std::cout<<"number of linear iterations = "<<systemPProj.n_linear_iterations()<<std::endl;
-    std::cout<<"initial linear residual = "<<(dynamic_cast<PetscLinearSolver<Number>*>(systemPProj.linear_solver.get()))->get_initial_residual()<<std::endl;
-    std::cout<<"final linear residual = "<<systemPProj.final_linear_residual()<<std::endl;
-
-    if (step%write_solution_interval == 0)
-    {
-      std::vector<Real> local_solution;
-      if (write_discontinuous)
-      {
-        vtk_io.build_discontinuous_solution_vector(mesh, es, local_solution);
-        vtk_io.write_ascii_discontinuous(working_directory, step, mesh, local_solution);
-      }
-      if (write_continuous) 
-      {
-        vtk_io.build_continuous_solution_vector(mesh, es, local_solution);
-        vtk_io.write_ascii_continuous(working_directory, step, mesh, local_solution);
-      }
-    }
-    
-    if (step%write_es_interval == 0)
-    {
-      es.allgather();    
-      char filenamees[1024];
-      sprintf(filenamees,"gnuid_es_%06d.xdr",step);
-      es.write(working_directory + "/" + filenamees, libMeshEnums::ENCODE, 1 | 2);
-      char filenamemesh[1024];
-      sprintf(filenamemesh,"gnuid_mesh_%06d.xdr",step);
-      mesh.write(working_directory + "/" + filenamemesh);
-    }
-    std::cout<<"################ End of time step"<<std::endl<<std::endl;
-  }
-}
-
-void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& system_name)
+void GnuidSolver::assemble_adv_diff(EquationSystems& es, const std::string& system_name)
 {
   std::cout<<"assembling adv diff system... ";
   std::cout.flush();
@@ -281,6 +125,16 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
   std::vector<unsigned int> neighbor_dof_indices_v;
   std::vector<unsigned int> neighbor_dof_indices_w;
   std::vector<unsigned int> neighbor_dof_indices_p;
+  
+  unsigned int n_flow_bc = es.parameters.get<unsigned int>("n flow bound");
+  std::vector<Real> surfaceArea(n_flow_bc,0.);
+  std::vector<Real> reversedSurfaceFlow(n_flow_bc,0.);
+  std::vector<Real> u_int(n_flow_bc,0.);
+  std::vector<Real> v_int(n_flow_bc,0.);
+  std::vector<Real> w_int(n_flow_bc,0.);
+  std::vector<std::vector<const Elem*> > bcElems(n_flow_bc);
+  std::vector<std::vector<unsigned int> > bcElemsSideNumber(n_flow_bc);
+  std::vector<RealVectorValue> U_bc_int(n_flow_bc);
 
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el = mesh.active_local_elements_end(); 
@@ -432,16 +286,13 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
       {
         const unsigned short boundary_id = mesh.boundary_info->boundary_id(elem,side);
 	std::string bc_type;
-	int lid;
-        bcHelper.bc_type_and_lid(es, boundary_id, bc_type, lid);
+        bcHelper.init_bcData(es, boundary_id, bc_type);
 	int dirichletProfile = bc_type.compare("dirichlet_profile");
 	int dirichletWall    = bc_type.compare("dirichlet_wall");
         if (dirichletProfile == 0 || dirichletWall == 0)
 	{
           RealVectorValue U_bc;
-          if (dirichletProfile == 0)
-	    bcHelper.init_dirichletprofile_bc(es, lid);
-	  else if (dirichletWall == 0)
+	  if (dirichletWall == 0)
 	    U_bc.zero();
           
           fe_elem_face->reinit(elem, side);
@@ -456,7 +307,7 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
           for (unsigned int qp=0; qp<qface.n_points(); qp++)
           {
 	    if (dirichletProfile == 0)
-              bcHelper.compute_dirichletprofile_bc(qface_points[qp],t,U_bc);
+              bcHelper.compute_dirichletIOProfile(qface_points[qp],t,U_bc);
             const Real u_bc_n = U_bc(0) * qface_normals[qp](0) + U_bc(1) * qface_normals[qp](1) + U_bc(2) * qface_normals[qp](2);
             Real u = 0.;
             Real v = 0.;
@@ -509,6 +360,42 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
             }          
           }
         }
+        else if (bc_type.compare("dirichlet_defective") == 0)
+	{
+	  unsigned int lid;
+	  RealVectorValue U_bc;
+          bcHelper.compute_dirichletDefectiveData(t, U_bc, lid);
+	  U_bc_int[lid] = U_bc;
+//	  Real u_normal = 0.;
+//          fe_elem_face->reinit(elem, side);
+//          for (unsigned int qp=0; qp<qface.n_points(); qp++)
+//          {
+//            Real u = 0.;
+//            Real v = 0.;
+//            Real w = 0.;
+//            for (unsigned int i=0; i<n_uvwp_e_dofs; i++)
+//            {
+//              u += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
+//              v += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
+//              w += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
+//            }
+//	    u_int[lid] += JxW_face[qp] * u;
+//	    v_int[lid] += JxW_face[qp] * v;
+//	    w_int[lid] += JxW_face[qp] * w;
+//            surfaceArea[lid] += JxW_face[qp];
+//            u_normal += JxW_face[qp] * (u * qface_normals[qp](0) + v * qface_normals[qp](1) + w * qface_normals[qp](2));
+//          }
+//	  Real u_bc_n = U_bc * qface_normals[0];
+//	  if (u_normal * u_bc_n < 0)
+//	    reversedSurfaceFlow[lid] += u_normal;
+          bcElems[lid].push_back(elem);
+          bcElemsSideNumber[lid].push_back(side);
+	}
+	else if (bc_type.compare("neumann") != 0)
+	{
+	  std::cerr<<"Unknown boundary condtion: "<<bc_type<<std::endl;
+	  libmesh_error();
+	}
       } 
       else
       {
@@ -796,271 +683,104 @@ void NS_DG_Solver::assemble_adv_diff(EquationSystems& es, const std::string& sys
     systemAdvDiff.rhs->add_vector(Fe_v, dof_indices_v);
     systemAdvDiff.rhs->add_vector(Fe_w, dof_indices_w);
   }
-  std::cout<<"done"<<std::endl;
-}
-
-void NS_DG_Solver::assemble_p_proj(EquationSystems& es, const std::string& system_name)
-{
-  std::cout<<"assembling pressure projection system... ";
-  std::cout.flush();
-
-  libmesh_assert (system_name == "PProj");
-  GnuidBCHelper bcHelper;
-  
-  const MeshBase& mesh = es.get_mesh();
-  const unsigned int dim = 3;
-  const Real density = es.parameters.get<Real>("density");
-  const Real dt= es.parameters.get<Real> ("dt");   
-  const Real t = es.parameters.get<Real>("time");
-  const Real step = es.parameters.get<unsigned int>("step");
-  const unsigned int n_washin_steps = es.parameters.get<unsigned int>("n washin steps");
-  const unsigned int n_second_order_start_step = es.parameters.get<unsigned int>("second order start step");
-  
-  TransientLinearImplicitSystem & systemPProj = es.get_system<TransientLinearImplicitSystem> ("PProj");
-  const unsigned int p_var = systemPProj.variable_number ("p");
-  
-  TransientLinearImplicitSystem & systemAdvDiff = es.get_system<TransientLinearImplicitSystem>("AdvDiff");
-  const unsigned int u_var = systemAdvDiff.variable_number("u");
-  const unsigned int v_var = systemAdvDiff.variable_number("v");
-  const unsigned int w_var = systemAdvDiff.variable_number("w");
-  
-  FEType fe_type = systemAdvDiff.variable_type(u_var);
-  FEType fe_type_p = systemPProj.variable_type(p_var);
-
-  AutoPtr<FEBase> fe  (FEBase::build(dim, fe_type));
-  AutoPtr<FEBase> fe_elem_face(FEBase::build(dim, fe_type));
-  AutoPtr<FEBase> fe_neighbor_face(FEBase::build(dim, fe_type));
-  AutoPtr<FEBase> fe_p  (FEBase::build(dim, fe_type_p));
-  AutoPtr<FEBase> fe_elem_face_p(FEBase::build(dim, fe_type_p));
-  AutoPtr<FEBase> fe_neighbor_face_p(FEBase::build(dim, fe_type_p));
-
-#ifdef QORDER 
-  QGauss qrule (dim, QORDER);
-#else
-  QGauss qrule (dim, fe_type_p.default_quadrature_order());
-#endif
-  fe->attach_quadrature_rule (&qrule);
-  fe_p->attach_quadrature_rule (&qrule);
-  
-#ifdef QORDER 
-  QGauss qface(dim-1, QORDER);
-#else
-  QGauss qface(dim-1, fe_type_p.default_quadrature_order());
-#endif
-  fe_elem_face->attach_quadrature_rule(&qface);
-  fe_neighbor_face->attach_quadrature_rule(&qface);
-  fe_elem_face_p->attach_quadrature_rule(&qface);
-  fe_neighbor_face_p->attach_quadrature_rule(&qface);
-
-  const std::vector<std::vector<Real> >& phi = fe->get_phi();
-  const std::vector<std::vector<RealGradient> >& dphi = fe->get_dphi();
-  const std::vector<std::vector<Real> >& psi = fe_p->get_phi();
-  const std::vector<std::vector<RealGradient> >& dpsi = fe_p->get_dphi();
-  const std::vector<Real>& JxW = fe->get_JxW();
-
-  const std::vector<std::vector<Real> >&  phi_face = fe_elem_face->get_phi();
-  const std::vector<std::vector<Real> >&  phi_neighbor_face = fe_neighbor_face->get_phi();
-  const std::vector<std::vector<Real> >&  psi_face = fe_elem_face_p->get_phi();
-  const std::vector<std::vector<Real> >&  psi_neighbor_face = fe_neighbor_face_p->get_phi();
-  const std::vector<Real>& JxW_face = fe_elem_face->get_JxW();
-  const std::vector<Point>& qface_normals = fe_elem_face->get_normals();
-  const std::vector<Point >& qface_points = fe_elem_face->get_xyz();
-  std::vector<Point> qface_neighbor_point;
-  
-  const DofMap & dof_map = systemPProj.get_dof_map();
-  const DofMap & dof_map_u = systemAdvDiff.get_dof_map();
-
-  DenseMatrix<Real> Ke_p;
-  DenseVector<Real> Fe_p;
-  DenseVector<Real> Fee_p;
-  DenseVector<Real> Fnn_p;
-  
-  std::vector<unsigned int> dof_indices_p;
-  std::vector<unsigned int> neighbor_dof_indices_p;
-  std::vector<unsigned int> dof_indices_u;
-  std::vector<unsigned int> dof_indices_v;
-  std::vector<unsigned int> dof_indices_w;
-  std::vector<unsigned int> neighbor_dof_indices_u;
-  std::vector<unsigned int> neighbor_dof_indices_v;
-  std::vector<unsigned int> neighbor_dof_indices_w;
-
-  MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
-  const MeshBase::const_element_iterator end_el = mesh.active_local_elements_end(); 
-  for ( ; el != end_el; ++el)
-  {
-    const Elem* elem = *el;
-    fe->reinit(elem);
-    fe_p->reinit(elem);
-
-    dof_map.dof_indices (elem, dof_indices_p, p_var);
-    dof_map_u.dof_indices (elem, dof_indices_u, u_var);
-    dof_map_u.dof_indices (elem, dof_indices_v, v_var);
-    dof_map_u.dof_indices (elem, dof_indices_w, w_var);
-    const unsigned int n_uvw_e_dofs = dof_indices_u.size();
-    const unsigned int n_p_e_dofs = dof_indices_p.size();
-
-    Ke_p.resize(n_p_e_dofs, n_p_e_dofs);
-    Fe_p.resize(n_p_e_dofs);
  
-    for (unsigned int qp=0; qp<qrule.n_points(); qp++)
-    {
-      RealVectorValue  grad_p_old (0.,0.,0.);
-      for (unsigned int i=0; i<n_p_e_dofs; i++)
+  if(n_flow_bc > 0)
+  {
+    AutoPtr<FEBase> fe_coupled_face(FEBase::build(dim, fe_type));
+    fe_coupled_face->attach_quadrature_rule(&qface);
+    const std::vector<std::vector<Real> >&  coupled_phi_face = fe_coupled_face->get_phi();
+    const std::vector<std::vector<RealGradient> >& coupled_dphi_face = fe_coupled_face->get_dphi();
+    const std::vector<Real>& JxW_coupled_face = fe_coupled_face->get_JxW();
+    const std::vector<Point>& qface_coupled_normals = fe_coupled_face->get_normals();
+    const std::vector<Point >& qface_coupled_points = fe_coupled_face->get_xyz();
+    std::vector<unsigned int> coupled_dof_indices_u;
+    std::vector<unsigned int> coupled_dof_indices_v;
+    std::vector<unsigned int> coupled_dof_indices_w;
+    std::vector<Real> phi_face_int, coupled_phi_face_int, dphi_normal_face_int, coupled_dphi_normal_face_int; 
+
+    for (unsigned int lid = 0; lid < n_flow_bc; lid++)
+      for (unsigned int ei = 0; ei < bcElems[lid].size(); ei++)
       {
-         grad_p_old(0) += dpsi[i][qp](0) * systemPProj.old_solution(dof_indices_p[i]);
-         grad_p_old(1) += dpsi[i][qp](1) * systemPProj.old_solution(dof_indices_p[i]);
-         grad_p_old(2) += dpsi[i][qp](2) * systemPProj.old_solution(dof_indices_p[i]);
-      }
-      Real divU = 0.0, divU_old = 0.0, divU_older = 0.0;
-      Real divU_extr = 0.0;
-      for (unsigned int i=0; i<n_uvw_e_dofs; i++)
-      {
-        RealVectorValue U( systemAdvDiff.current_solution(dof_indices_u[i]),
-                           systemAdvDiff.current_solution(dof_indices_v[i]),
-                           systemAdvDiff.current_solution(dof_indices_w[i]));
-        divU += U * dphi[i][qp];
-      }
+        const Elem* elem = bcElems[lid][ei];
+        dof_map.dof_indices (elem, dof_indices_u, u_var);
+        dof_map.dof_indices (elem, dof_indices_v, v_var);
+        dof_map.dof_indices (elem, dof_indices_w, w_var);
+        const unsigned int n_dofs = dof_indices_u.size();
+        fe_elem_face->reinit(elem, bcElemsSideNumber[lid][ei]);
+            
+        AutoPtr<Elem> elem_side (elem->build_side(bcElemsSideNumber[lid][ei]));
+        const unsigned int elem_b_order = static_cast<unsigned int> (fe_elem_face->get_order());
+        double h= elem->volume()/elem_side->volume() * 1./pow(elem_b_order, 2.);
       
-      if (step > n_second_order_start_step)
-        divU_extr = (3./2.) * divU;  
-      else
-        divU_extr = divU;  
-        
-      for (unsigned int i=0; i<n_p_e_dofs; i++)
-      {
-        for (unsigned int j=0; j<n_p_e_dofs; j++)
+        phi_face_int.resize(n_dofs);
+        dphi_normal_face_int.resize(n_dofs);
+        for (unsigned int i = 0; i < n_dofs; i ++)
         {
-          Ke_p(i,j) += JxW[qp]*(dpsi[i][qp]*dpsi[j][qp]);
-        }
-        Fe_p(i) += JxW[qp] * (grad_p_old * dpsi[i][qp]);
-        Fe_p(i) -= JxW[qp] * ((density/dt) * psi[i][qp] * divU_extr);
-      }
-    }
-    for (unsigned int side=0; side<elem->n_sides(); side++)
-    {
-      if (elem->neighbor(side) == NULL)
-      {
-        const unsigned short boundary_id = mesh.boundary_info->boundary_id(elem,side);
-	std::string bc_type;
-	int lid;
-        bcHelper.bc_type_and_lid(es, boundary_id, bc_type, lid);
-	int dirichletProfile = bc_type.compare("dirichlet_profile");
-	int dirichletWall    = bc_type.compare("dirichlet_wall");
-        if (dirichletProfile  == 0 || dirichletWall == 0)
-	{
-          fe_elem_face->reinit(elem, side);
-          fe_elem_face_p->reinit(elem, side);
-          RealVectorValue U_bc;
-          if (dirichletProfile == 0)
-	    bcHelper.init_dirichletprofile_bc(es, lid);
-	  else if (dirichletWall == 0)
-	    U_bc.zero();
+          phi_face_int[i] = 0;
+          dphi_normal_face_int[i] = 0;
           for (unsigned int qp=0; qp<qface.n_points(); qp++)
           {
-            if (dirichletProfile == 0)
-              bcHelper.compute_dirichletprofile_bc(qface_points[qp],t,U_bc);
-            const Real u_bc_n = U_bc * qface_normals[qp];
-            RealVectorValue U (0.,0.,0.); 
-            for (unsigned int i=0; i<n_uvw_e_dofs; i++)
-            {
-              U(0) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
-              U(1) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
-              U(2) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
-            }
-            const Real u_n = U * qface_normals[qp];
-            Real u_n_jump = 0.;
-            if (step > n_second_order_start_step)
-              u_n_jump = (3./2.) * (u_n - u_bc_n);
-            else
-              u_n_jump = (u_n - u_bc_n);
-            for (unsigned int i=0; i<n_p_e_dofs; i++)
-              Fe_p(i) += JxW_face[qp] * (density/dt) * u_n_jump * psi_face[i][qp];
-          }
-	}
-	else if (bc_type.compare("neumann") == 0)
-	{
-          fe_elem_face->reinit(elem, side);
-          fe_elem_face_p->reinit(elem, side);
-          for (unsigned int qp=0; qp<qface.n_points(); qp++)
-          {
-            Real penalty_bc = 1e10;
-            Real pressure_outlet = 0.;
-            for (unsigned int i=0; i<n_p_e_dofs; i++)
-            {
-              for (unsigned int j=0; j<n_p_e_dofs; j++)
-              {
-                Ke_p(i,j) += JxW_face[qp] * penalty_bc * psi_face[i][qp] * psi_face[j][qp];
-              }
-              Fe_p(i) += JxW_face[qp] * pressure_outlet * penalty_bc * psi_face[i][qp];
-            }          
+            phi_face_int[i] += JxW_face[qp] * phi_face[i][qp];
+            dphi_normal_face_int[i] += JxW_face[qp] * (dphi_face[i][qp] * qface_normals[qp]);
           }
         }
-      } 
-      else
-      {
-        const Elem* neighbor = elem->neighbor(side);
-        const unsigned int elem_id = elem->id();
-        const unsigned int neighbor_id = neighbor->id();
-        if ((neighbor->active() && (neighbor->level() == elem->level()) && (elem_id < neighbor_id)) || (neighbor->level() < elem->level()))
+        Fe_u.resize(n_dofs);
+        Fe_v.resize(n_dofs);
+        Fe_w.resize(n_dofs);
+        for (unsigned int i=0; i<n_dofs; i++)
         {
-          AutoPtr<Elem> elem_side (elem->build_side(side));
-          fe_elem_face->reinit(elem, side);
-          fe_elem_face_p->reinit(elem, side);
-	  unsigned int side_neighbor = neighbor->which_neighbor_am_i(elem);
-          fe_neighbor_face->side_map (neighbor, elem_side.get(), side_neighbor, qface.get_points(), qface_neighbor_point);
-          fe_neighbor_face->reinit(neighbor, &qface_neighbor_point);
-          fe_neighbor_face_p->reinit(neighbor, &qface_neighbor_point);
+          Fe_u(i) -= viscosity * U_bc_int[lid](0)*dphi_normal_face_int[i];
+          Fe_v(i) -= viscosity * U_bc_int[lid](1)*dphi_normal_face_int[i];
+          Fe_w(i) -= viscosity * U_bc_int[lid](2)*dphi_normal_face_int[i];
 
-          dof_map.dof_indices (neighbor, neighbor_dof_indices_p, p_var);
-          dof_map_u.dof_indices (neighbor, neighbor_dof_indices_u, u_var);
-          dof_map_u.dof_indices (neighbor, neighbor_dof_indices_v, v_var);
-          dof_map_u.dof_indices (neighbor, neighbor_dof_indices_w, w_var);
-          const unsigned int n_uvw_n_dofs = neighbor_dof_indices_u.size();
-          const unsigned int n_p_n_dofs = neighbor_dof_indices_p.size();
-   
-          Fee_p.resize(n_p_e_dofs);
-          Fnn_p.resize(n_p_n_dofs);
+          Fe_u(i) += viscosity * (penalty/h) * phi_face_int[i]*U_bc_int[lid](0);
+          Fe_v(i) += viscosity * (penalty/h) * phi_face_int[i]*U_bc_int[lid](1);
+          Fe_w(i) += viscosity * (penalty/h) * phi_face_int[i]*U_bc_int[lid](2);
           
-          for (unsigned int qp=0; qp<qface.n_points(); qp++)
+//          Fe_u(i) -= (reversedSurfaceFlow[lid]/surfaceArea[lid]) * phi_face_int[i] * u_int[lid];
+//          Fe_v(i) -= (reversedSurfaceFlow[lid]/surfaceArea[lid]) * phi_face_int[i] * v_int[lid];
+//          Fe_w(i) -= (reversedSurfaceFlow[lid]/surfaceArea[lid]) * phi_face_int[i] * w_int[lid];
+        }
+        systemAdvDiff.rhs->add_vector(Fe_u, dof_indices_u);
+        systemAdvDiff.rhs->add_vector(Fe_v, dof_indices_v);
+        systemAdvDiff.rhs->add_vector(Fe_w, dof_indices_w);
+        
+        for (unsigned int ej = 0; ej < bcElems.size(); ej++)
+        {
+          const Elem* coupledElem = bcElems[lid][ej];
+          dof_map.dof_indices (coupledElem, coupled_dof_indices_u, u_var);
+          dof_map.dof_indices (coupledElem, coupled_dof_indices_v, v_var);
+          dof_map.dof_indices (coupledElem, coupled_dof_indices_w, w_var);
+          const unsigned int n_coupled_dofs = coupled_dof_indices_u.size();
+          fe_coupled_face->reinit(coupledElem, bcElemsSideNumber[lid][ej]);
+        
+          coupled_phi_face_int.resize(n_coupled_dofs);
+          coupled_dphi_normal_face_int.resize(n_coupled_dofs);
+          for (unsigned int i = 0; i < n_coupled_dofs; i ++)
           {
-            RealVectorValue U (0.,0.,0.); 
-            for (unsigned int i=0; i<n_uvw_e_dofs; i++)
+            coupled_phi_face_int[i] = 0;
+            coupled_dphi_normal_face_int[i] = 0;
+            for (unsigned int qp=0; qp<qface.n_points(); qp++)
             {
-               U(0) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_u[i]);
-               U(1) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_v[i]);
-               U(2) += phi_face[i][qp] * systemAdvDiff.current_solution(dof_indices_w[i]);
-            }
-            const Real u_n = U * qface_normals[qp];
-            RealVectorValue U_neighbor (0.,0.,0.); 
-            for (unsigned int i=0; i<n_uvw_n_dofs; i++)
-            {
-               U_neighbor(0) += phi_neighbor_face[i][qp] * systemAdvDiff.current_solution(neighbor_dof_indices_u[i]);
-               U_neighbor(1) += phi_neighbor_face[i][qp] * systemAdvDiff.current_solution(neighbor_dof_indices_v[i]);
-               U_neighbor(2) += phi_neighbor_face[i][qp] * systemAdvDiff.current_solution(neighbor_dof_indices_w[i]);
-            }
-            const Real u_n_neighbor = U_neighbor * qface_normals[qp];
-            Real u_n_jump = 0.;
-            if (step > n_second_order_start_step)
-              u_n_jump = (3./2.) * (u_n - u_n_neighbor);
-            else
-              u_n_jump = (u_n - u_n_neighbor);
-            for (unsigned int i=0; i<n_p_e_dofs; i++)          // elem elem matrix
-            {
-              Fee_p(i) += 0.5 * (density/dt) * JxW_face[qp] * u_n_jump * psi_face[i][qp];
-            }
-
-            for (unsigned int i=0; i<n_p_n_dofs; i++) // neighbor neighbor matrix
-            {
-              Fnn_p(i) += 0.5  * (density/dt) * JxW_face[qp] * u_n_jump * psi_neighbor_face[i][qp];
+              coupled_phi_face_int[i] += JxW_coupled_face[qp] * coupled_phi_face[i][qp];
+              coupled_dphi_normal_face_int[i] += JxW_coupled_face[qp] * (coupled_dphi_face[i][qp] * qface_coupled_normals[qp]);
             }
           }
-          systemPProj.rhs->add_vector(Fee_p, dof_indices_p);
-          systemPProj.rhs->add_vector(Fnn_p, neighbor_dof_indices_p);
+          Ke_uu.resize(n_dofs, n_coupled_dofs);
+          for (unsigned int i=0; i<n_dofs; i++)
+          {
+            for (unsigned int j=0; j<n_coupled_dofs; j++)
+            { 
+              Ke_uu(i,j) -= (1./surfaceArea[lid]) * viscosity * (phi_face_int[i]*(coupled_dphi_normal_face_int[j]));
+              Ke_uu(i,j) -= (1./surfaceArea[lid]) * viscosity * (coupled_phi_face_int[j]*dphi_normal_face_int[i]);
+              Ke_uu(i,j) += (1./surfaceArea[lid]) * viscosity * (penalty/h) * (phi_face_int[i]*coupled_phi_face_int[j]);
+            }
+          }          
+          systemAdvDiff.matrix->add_matrix(Ke_uu, dof_indices_u, coupled_dof_indices_u);
+          systemAdvDiff.matrix->add_matrix(Ke_uu, dof_indices_v, coupled_dof_indices_v);
+          systemAdvDiff.matrix->add_matrix(Ke_uu, dof_indices_w, coupled_dof_indices_w);
         }
       }
-    }
-    systemPProj.matrix->add_matrix(Ke_p, dof_indices_p);
-    systemPProj.rhs->add_vector(Fe_p, dof_indices_p);
   }
   std::cout<<"done"<<std::endl;
 }

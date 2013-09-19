@@ -27,14 +27,12 @@
 
 using namespace libMesh;
 
-//class libMesh::EquationSystems;
-
-class NS_DG_Solver 
+class GnuidSolver 
 {
 public:
 
-  NS_DG_Solver(EquationSystems& es): _system(es) {} 
-  ~NS_DG_Solver() {}
+  GnuidSolver(EquationSystems& es): _system(es) {} 
+  ~GnuidSolver() {}
   
   void init();
   void solve();

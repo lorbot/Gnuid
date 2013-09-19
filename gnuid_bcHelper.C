@@ -1,13 +1,29 @@
+// Gnuid, An Incompressible Navier-Stokes Solver for Hemodynamics 
+// Copyright (C) 2010 Lorenzo Alessio Botti
+
+/* This Incompressible Navier-Stokes Solver is free software; */
+/* you can redistribute it and/or modify it under the terms of the */
+/* GNU Lesser General Public  License as published by the Free Software Foundation */
+/* either version 2.1 of the License, or (at your option) any later version. */
+
+/* This software is distributed in the hope that it will be useful, */
+/* but WITHOUT ANY WARRANTY; without even the implied warranty of */
+/* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU */
+/* Lesser General Public License for more details. */
+
+/* You should have received a copy of the GNU Lesser General Public */
+/* License along with this software; if not, write to the Free Software */
+/* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA */
+
 #include "gnuid_bcHelper.h"
 #include "libmesh/equation_systems.h"
-#include "complex_operations.h"
+#include "gnuid_cnHelper.h"
 
-void GnuidBCHelper::bc_type_and_lid(const EquationSystems& es, const unsigned int boundary_id, std::string & bc_type, int & lid)
+void GnuidBCHelper::init_bcData(const EquationSystems& es, const unsigned int boundary_id, std::string & bc_type)
 {
   const unsigned short wall_id = es.parameters.get<unsigned short>("wall id");
   if (boundary_id == wall_id)
   {
-    lid = -1;
     bc_type = "dirichlet_wall";
     return;
   }
@@ -17,7 +33,6 @@ void GnuidBCHelper::bc_type_and_lid(const EquationSystems& es, const unsigned in
     sprintf(press_bc_id,"press_bc_%02d_id",i);
     if (boundary_id == es.parameters.get<unsigned short>(press_bc_id))
     {
-      lid = i;
       bc_type = "neumann";
       return;
     }
@@ -28,7 +43,7 @@ void GnuidBCHelper::bc_type_and_lid(const EquationSystems& es, const unsigned in
     sprintf(vel_bc_id,"vel_bc_%02d_id",i);
     if (boundary_id == es.parameters.get<unsigned short>(vel_bc_id))
     {
-      lid = i;
+      init_dirichletIOData(es,i);
       bc_type = "dirichlet_profile";
       return;
     }
@@ -39,7 +54,7 @@ void GnuidBCHelper::bc_type_and_lid(const EquationSystems& es, const unsigned in
     sprintf(flow_bc_id,"flow_bc_%02d_id",i);
     if (boundary_id == es.parameters.get<unsigned short>(flow_bc_id))
     {
-      lid = i;
+      init_dirichletIOData(es,i);
       bc_type = "dirichlet_defective";
       return;
     }
@@ -48,8 +63,9 @@ void GnuidBCHelper::bc_type_and_lid(const EquationSystems& es, const unsigned in
   libmesh_error();
 }
 
-void GnuidBCHelper::init_dirichletprofile_bc(EquationSystems& es, const int& lid)
+void GnuidBCHelper::init_dirichletIOData(const EquationSystems& es, const unsigned int& lid)
 {
+  _lid = lid;
   Real Re_number = es.parameters.get<Real>("Re number");
   Real mass_flow = es.parameters.get<Real>("mass flow");
   Real density = es.parameters.get<Real>("density");
@@ -83,16 +99,12 @@ void GnuidBCHelper::init_dirichletprofile_bc(EquationSystems& es, const int& lid
   }
   _u_mean = 0.;
   if (Re_number != 0 && mass_flow == 0)
-  {
-     _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _vel_bc_Radius);
-  }
+    _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _vel_bc_Radius);
   else if (Re_number == 0 && mass_flow != 0)
-  {
-     _u_mean = _scaling * mass_flow/(density * libMesh::pi * _vel_bc_Radius * _vel_bc_Radius); 
-  }
+    _u_mean = _scaling * mass_flow/(density * libMesh::pi * _vel_bc_Radius * _vel_bc_Radius); 
 }
     
-void GnuidBCHelper::compute_dirichletprofile_bc(const Point& point, const Real& t, RealVectorValue& U_bc)
+void GnuidBCHelper::compute_dirichletIOProfile(const Point& point, const Real& t, RealVectorValue& U_bc)
 {
   const Real r_sq = (point - _vel_bc_Center).size_sq();
   const Real R_sq = _vel_bc_Radius * _vel_bc_Radius;
@@ -112,7 +124,6 @@ void GnuidBCHelper::compute_dirichletprofile_bc(const Point& point, const Real& 
       Complex c_u = C_op::Cmul(c_const, Complex(1.0 - C_op::Cdiv(C_op::Cbes(0,c_a_2), C_op::Cbes(0,c_a)).real(),
                                                 0.0 - C_op::Cdiv(C_op::Cbes(0,c_a_2), C_op::Cbes(0,c_a)).imag()));
       u += c_u.real();        
-       
     }                                                            
     if (_vel_bc_Type == "inlet")                               
       U_bc.assign((-1.) * _vel_bc_Normal * u * _u_mean);
@@ -125,3 +136,17 @@ void GnuidBCHelper::compute_dirichletprofile_bc(const Point& point, const Real& 
     U_bc.zero();
 }
 
+void GnuidBCHelper::compute_dirichletDefectiveData(const Real& t, RealVectorValue& U_bc, unsigned int& lid)
+{
+  Real u_mean_t = 0.;
+  for (unsigned int k = 0; k < _f_modes.size(); k++)
+  {
+    Complex c_t = Complex(0, 2.*libMesh::pi*k*t/_t_period);
+    u_mean_t += _u_mean * C_op::Cmul(_f_modes[k],C_op::Cexp(c_t)).real();
+  }
+  if (_vel_bc_Type == "inlet")
+    U_bc.assign((-1) * _vel_bc_Normal * u_mean_t);
+  else if (_vel_bc_Type == "outlet")
+    U_bc.assign(_vel_bc_Normal * u_mean_t);
+  lid = _lid;
+}
