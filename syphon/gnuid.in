@@ -19,11 +19,51 @@ vel_bc_normal_k = 0.285733
 
 scaling = 1
 
-n_fourier_modes = 1
+n_fourier_modes = 11
 
 f_mode_00_re = 1.
 
 f_mode_00_im = 0.
+
+f_mode_01_re = 0.041275
+
+f_mode_01_im = 0.152844
+
+f_mode_02_re = -0.006424
+
+f_mode_02_im = -0.121517
+
+f_mode_03_re = 0.057946
+
+f_mode_03_im = 0.073805
+
+f_mode_04_re = -0.052655
+
+f_mode_04_im = -0.017654
+
+f_mode_05_re = 0.034584
+
+f_mode_05_im = -0.010970
+
+f_mode_06_re = -0.003375 
+
+f_mode_06_im = 0.021820
+
+f_mode_07_re = -0.014239 
+
+f_mode_07_im = -0.000403
+
+f_mode_08_re = 0.003614 
+
+f_mode_08_im = -0.011576
+
+f_mode_09_re = 0.007116
+
+f_mode_09_im = 0.004348
+
+f_mode_10_re = -0.001206
+
+f_mode_10_im = -0.000945
 []
 
 n_pressure_boundaries = 1
