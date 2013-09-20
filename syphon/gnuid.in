@@ -74,7 +74,7 @@ press_bc_id = 2
 
 mass_flow = 0
 
-Re_number = 300 
+Re_number = 500 
 
 wall_id = 1
 
@@ -84,7 +84,7 @@ density = 1.06      # [g/cm3]
 
 viscosity = 0.035    # [poise]
 
-dt = 0.001        # [s]
+dt = 0.0025        # [s]
 
 velocity_approximation_order = 1
 
@@ -96,9 +96,9 @@ step = 0             # !=0 when restarting a simulation
 
 time = 0.0           # !=0 when restarting a simulation, time = step * dt
 
-period = 10 
+period = 1 
 
-n_timesteps = 4
+n_timesteps = 1201
 
 linear_solver_maximum_iterations = 4000 
 
@@ -120,7 +120,7 @@ n_steps_between_equation_system_output = 1
 
 second_order_start_step = 10 
 
-n_washin_steps = 2
+n_washin_steps = 5 
 
 read_es_file = false 
 
