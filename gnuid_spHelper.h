@@ -50,6 +50,9 @@ private:
     std::vector<dof_id_type> elementDofs, coupledElementDofs; 
 
     for (unsigned int lid = 0; lid < n_flow_bc; lid++)
+    {
+      unsigned int counter = 0;
+      unsigned int counter_offProc = 0;
       for (unsigned int i = 0; i < bcElems[lid].size(); i++)
       {
         const Elem* elem = bcElems[lid][i];
@@ -87,16 +90,27 @@ private:
           }
         }
       }
-    for (dof_id_type i=0; i<n_dofs_on_proc; i++)
-    {
-      // Get the row of the sparsity pattern
-      SparsityPattern::Row &row = sparsity[i];
-      for (dof_id_type j=0; j<row.size(); j++)
-        if ((row[j] < first_dof_on_proc) || (row[j] >= end_dof_on_proc))
-          n_oz[i]++;
-        else
-          n_nz[i]++;
-      row.clear();
+      for (dof_id_type i=0; i<n_dofs_on_proc; i++)
+      {
+        // Get the row of the sparsity pattern
+        SparsityPattern::Row &row = sparsity[i];
+        for (dof_id_type j=0; j<row.size(); j++)
+          if ((row[j] < first_dof_on_proc) || (row[j] >= end_dof_on_proc))
+	  {
+	    counter_offProc++;
+            n_oz[i]++;
+	  }
+          else
+	  {
+	    counter++;
+            n_nz[i]++;
+	  }
+        row.clear();
+      }
+      char flow_bc_id[1024];
+      sprintf(flow_bc_id,"flow_bc_%02d_id",lid);
+      unsigned short bc_id = _es->parameters.get<unsigned short>(flow_bc_id);
+      std::cout<<"Boundary id "<<bc_id<<", added" <<counter<<" and "<<counter_offProc<<" non-zeros to system matrix"<<std::endl;
     }
   }
 
