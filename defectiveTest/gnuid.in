@@ -1,0 +1,201 @@
+n_velocity_boundaries = 1
+
+[vel_bc_00]
+inlet_outlet = inlet
+
+vel_bc_id = 2
+
+vel_bc_radius = 0.156436
+
+vel_bc_center_x = 9.777839
+vel_bc_center_y = 10.27822
+vel_bc_center_z = 2.596419
+
+vel_bc_normal_i = -0.060760
+vel_bc_normal_j = -0.721450
+vel_bc_normal_k = -0.689796
+
+scaling = 1
+
+n_fourier_modes = 12
+
+f_mode_00_re = 1.0000000000
+
+f_mode_00_im = 0.0000000000
+
+f_mode_01_re = -0.0792519940
+
+f_mode_01_im = -0.2967728205
+
+f_mode_02_re = -0.1928850385
+
+f_mode_02_im = -0.1006650522
+
+f_mode_03_re = -0.1252701233
+
+f_mode_03_im = 0.0970543502
+
+f_mode_04_re = 0.0075231644
+
+f_mode_04_im = 0.0600218928
+
+f_mode_05_re = -0.0002360326
+
+f_mode_05_im = 0.0561484206
+
+f_mode_06_re = 0.0491653030
+
+f_mode_06_im = 0.0137742508
+
+f_mode_07_re = 0.0118716678
+
+f_mode_07_im = -0.0070305643
+
+f_mode_08_re = 0.0103675116
+
+f_mode_08_im = -0.0004435890
+
+f_mode_09_re = 0.0069329315
+
+f_mode_09_im = -0.0047310522
+
+f_mode_10_re = 0.0032664244
+
+f_mode_10_im = -0.0023754806
+
+f_mode_11_re = -0.0000044513
+
+f_mode_11_im = 0.0000242777
+[]
+
+n_flow_defective_boundaries = 1
+
+[flow_bc_00]
+inlet_outlet = outlet
+
+flow_bc_id = 3
+
+flow_bc_radius = 0.081025
+
+flow_bc_center_x = 11.605811
+flow_bc_center_y = 12.189728
+flow_bc_center_z = 3.976142
+flow
+flow_bc_normal_i = 0.829738
+flow_bc_normal_j = 0.171186
+flow_bc_normal_k = -0.531254
+
+scaling = 0.64
+
+n_fourier_modes = 12
+
+f_mode_00_re = 1.0000000000
+
+f_mode_00_im = 0.0000000000
+
+f_mode_01_re = -0.1387787154
+
+f_mode_01_im = -0.2412262605
+
+f_mode_02_re = -0.1873700464
+
+f_mode_02_im = -0.0042976765
+
+f_mode_03_re = -0.0345269736
+
+f_mode_03_im = 0.1279233526
+
+f_mode_04_re = 0.0400950907
+
+f_mode_04_im = 0.0280798334
+
+f_mode_05_re = 0.0374746582
+
+f_mode_05_im = 0.0235528384
+
+f_mode_06_re = 0.0249365877
+
+f_mode_06_im = -0.0315845355
+
+f_mode_07_re = -0.0044684574
+
+f_mode_07_im = -0.0123330622
+
+f_mode_08_re = -0.0033673396
+
+f_mode_08_im = -0.0057214298
+
+f_mode_09_re = -0.0037140388
+
+f_mode_09_im = -0.0023761876
+
+f_mode_10_re = -0.0018654028
+
+f_mode_10_im = -0.0008910902
+
+f_mode_11_re = -0.0000047668
+
+f_mode_11_im = 0.0000307426
+[]
+
+n_pressure_boundaries = 1
+
+[press_bc_00]
+press_bc_id = 4
+[]
+
+mass_flow = 4.9
+
+Re_number = 0 
+
+wall_id = 1
+
+penalty = 4.       
+
+density = 1.05      # [g/cm3]
+
+viscosity = 0.035    # [poise]
+
+dt = 0.0006        # [s]
+
+velocity_approximation_order = 1
+
+pressure_approximation_order = 1
+
+first_to_second_order_mesh = false
+
+step = 0             # !=0 when restarting a simulation
+
+time = 0.           # !=0 when restarting a simulation, time = step * dt
+
+period = 0.6
+
+n_timesteps = 2000
+
+linear_solver_maximum_iterations = 4000 
+
+linear_solver_tolerance = 1.e-8
+
+nonlinear_solver_maximum_iterations = 10
+
+nonlinear_solver_tolerance = 1.e-1
+
+n_uniform_refinement_steps = 0
+
+n_steps_between_solution_output = 1
+
+n_steps_between_equation_system_output = 50 
+
+second_order_start_step = 20 
+
+n_washin_steps = 2 
+
+read_es_file = false 
+
+mesh_file = ./mesh.xda
+
+es_file = ./gnuid_test.xdr
+
+write_continuous = true
+
+write_discontinuous = false
