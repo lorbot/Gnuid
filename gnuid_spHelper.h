@@ -110,7 +110,7 @@ private:
       char flow_bc_id[1024];
       sprintf(flow_bc_id,"flow_bc_%02d_id",lid);
       unsigned short bc_id = _es->parameters.get<unsigned short>(flow_bc_id);
-      std::cout<<"Boundary id "<<bc_id<<", added" <<counter<<" and "<<counter_offProc<<" non-zeros to system matrix"<<std::endl;
+      std::cout<<"Boundary id "<<bc_id<<", added " <<counter<<" and "<<counter_offProc<<" non-zeros to system matrix"<<std::endl;
     }
   }
 

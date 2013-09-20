@@ -367,9 +367,9 @@ void GnuidSolver::assemble_adv_diff(EquationSystems& es, const std::string& syst
           bcHelper.compute_dirichletDefectiveData(t, U_bc, lid);
 	  U_bc_int[lid] = U_bc;
 //	  Real u_normal = 0.;
-//          fe_elem_face->reinit(elem, side);
-//          for (unsigned int qp=0; qp<qface.n_points(); qp++)
-//          {
+          fe_elem_face->reinit(elem, side);
+          for (unsigned int qp=0; qp<qface.n_points(); qp++)
+          {
 //            Real u = 0.;
 //            Real v = 0.;
 //            Real w = 0.;
@@ -382,9 +382,9 @@ void GnuidSolver::assemble_adv_diff(EquationSystems& es, const std::string& syst
 //	    u_int[lid] += JxW_face[qp] * u;
 //	    v_int[lid] += JxW_face[qp] * v;
 //	    w_int[lid] += JxW_face[qp] * w;
-//            surfaceArea[lid] += JxW_face[qp];
+            surfaceArea[lid] += JxW_face[qp];
 //            u_normal += JxW_face[qp] * (u * qface_normals[qp](0) + v * qface_normals[qp](1) + w * qface_normals[qp](2));
-//          }
+          }
 //	  Real u_bc_n = U_bc * qface_normals[0];
 //	  if (u_normal * u_bc_n < 0)
 //	    reversedSurfaceFlow[lid] += u_normal;
@@ -699,6 +699,7 @@ void GnuidSolver::assemble_adv_diff(EquationSystems& es, const std::string& syst
     std::vector<Real> phi_face_int, coupled_phi_face_int, dphi_normal_face_int, coupled_dphi_normal_face_int; 
 
     for (unsigned int lid = 0; lid < n_flow_bc; lid++)
+    {
       for (unsigned int ei = 0; ei < bcElems[lid].size(); ei++)
       {
         const Elem* elem = bcElems[lid][ei];
@@ -781,6 +782,7 @@ void GnuidSolver::assemble_adv_diff(EquationSystems& es, const std::string& syst
           systemAdvDiff.matrix->add_matrix(Ke_uu, dof_indices_w, coupled_dof_indices_w);
         }
       }
+    }
   }
   std::cout<<"done"<<std::endl;
 }

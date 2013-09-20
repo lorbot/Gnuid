@@ -43,7 +43,7 @@ void GnuidBCHelper::init_bcData(const EquationSystems& es, const unsigned int bo
     sprintf(vel_bc_id,"vel_bc_%02d_id",i);
     if (boundary_id == es.parameters.get<unsigned short>(vel_bc_id))
     {
-      init_dirichletIOData(es,i);
+      init_dirichletIOProfile(es,i);
       bc_type = "dirichlet_profile";
       return;
     }
@@ -54,7 +54,7 @@ void GnuidBCHelper::init_bcData(const EquationSystems& es, const unsigned int bo
     sprintf(flow_bc_id,"flow_bc_%02d_id",i);
     if (boundary_id == es.parameters.get<unsigned short>(flow_bc_id))
     {
-      init_dirichletIOData(es,i);
+      init_dirichletIODefective(es,i);
       bc_type = "dirichlet_defective";
       return;
     }
@@ -63,7 +63,7 @@ void GnuidBCHelper::init_bcData(const EquationSystems& es, const unsigned int bo
   libmesh_error();
 }
 
-void GnuidBCHelper::init_dirichletIOData(const EquationSystems& es, const unsigned int& lid)
+void GnuidBCHelper::init_dirichletIOProfile(const EquationSystems& es, const unsigned int& lid)
 {
   _lid = lid;
   Real Re_number = es.parameters.get<Real>("Re number");
@@ -83,12 +83,12 @@ void GnuidBCHelper::init_dirichletIOData(const EquationSystems& es, const unsign
   sprintf(vel_bc_normal,"vel_bc_%02d_normal",lid);
   sprintf(vel_bc_scaling,"vel_bc_%02d_scaling",lid);
   sprintf(vel_bc_n_fourier_modes,"vel_bc_%02d_n_fourier_modes",lid);
-  _vel_bc_Radius = es.parameters.get<Real>(vel_bc_radius);
-  _vel_bc_Type = es.parameters.get<std::string>(vel_bc_type);
-  _vel_bc_Normal = es.parameters.get<VectorValue<Real> >(vel_bc_normal);
-  _vel_bc_Center = es.parameters.get<Point>(vel_bc_center);
+  _bc_Radius = es.parameters.get<Real>(vel_bc_radius);
+  _bc_Type = es.parameters.get<std::string>(vel_bc_type);
+  _bc_Normal = es.parameters.get<VectorValue<Real> >(vel_bc_normal);
+  _bc_Center = es.parameters.get<Point>(vel_bc_center);
   _scaling = es.parameters.get<Real>(vel_bc_scaling);
-  _alpha = _vel_bc_Radius * sqrt((2.*libMesh::pi/_t_period)/(viscosity/density));
+  _alpha = _bc_Radius * sqrt((2.*libMesh::pi/_t_period)/(viscosity/density));
   unsigned int n_f_modes = es.parameters.get<unsigned int>(vel_bc_n_fourier_modes);
   _f_modes.resize(n_f_modes);
   for (unsigned int k =0; k < n_f_modes; k++)
@@ -99,15 +99,15 @@ void GnuidBCHelper::init_dirichletIOData(const EquationSystems& es, const unsign
   }
   _u_mean = 0.;
   if (Re_number != 0 && mass_flow == 0)
-    _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _vel_bc_Radius);
+    _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _bc_Radius);
   else if (Re_number == 0 && mass_flow != 0)
-    _u_mean = _scaling * mass_flow/(density * libMesh::pi * _vel_bc_Radius * _vel_bc_Radius); 
+    _u_mean = _scaling * mass_flow/(density * libMesh::pi * _bc_Radius * _bc_Radius); 
 }
     
 void GnuidBCHelper::compute_dirichletIOProfile(const Point& point, const Real& t, RealVectorValue& U_bc)
 {
-  const Real r_sq = (point - _vel_bc_Center).size_sq();
-  const Real R_sq = _vel_bc_Radius * _vel_bc_Radius;
+  const Real r_sq = (point - _bc_Center).size_sq();
+  const Real R_sq = _bc_Radius * _bc_Radius;
   if (R_sq - r_sq > 0.0)
   {
     Real u = 2. * ((R_sq - r_sq)/R_sq) * _f_modes[0].real();
@@ -116,7 +116,7 @@ void GnuidBCHelper::compute_dirichletIOProfile(const Point& point, const Real& t
       Complex c_i = Complex(0,1);
 
       Complex c_a = C_op::RCmul(_alpha * sqrt(1.0*k), C_op::Cmul(c_i, sqrt(c_i)));  
-      Complex c_a_2 = C_op::RCmul(sqrt(r_sq)/_vel_bc_Radius, c_a);
+      Complex c_a_2 = C_op::RCmul(sqrt(r_sq)/_bc_Radius, c_a);
                                                                
       Complex c_t = Complex(0, 2.*libMesh::pi*k*t/_t_period);
       Complex c_f10 = C_op::RCmul(2., C_op::Cdiv(C_op::Cbes(1,c_a), C_op::Cmul(C_op::Cbes(0,c_a),c_a)));
@@ -125,15 +125,56 @@ void GnuidBCHelper::compute_dirichletIOProfile(const Point& point, const Real& t
                                                 0.0 - C_op::Cdiv(C_op::Cbes(0,c_a_2), C_op::Cbes(0,c_a)).imag()));
       u += c_u.real();        
     }                                                            
-    if (_vel_bc_Type == "inlet")                               
-      U_bc.assign((-1.) * _vel_bc_Normal * u * _u_mean);
-    else if (_vel_bc_Type == "outlet")
-      U_bc.assign(_vel_bc_Normal * u * _u_mean);
+    if (_bc_Type == "inlet")                               
+      U_bc.assign((-1.) * _bc_Normal * u * _u_mean);
+    else if (_bc_Type == "outlet")
+      U_bc.assign(_bc_Normal * u * _u_mean);
     else
       libmesh_error();
   }
   else
     U_bc.zero();
+}
+
+void GnuidBCHelper::init_dirichletIODefective(const EquationSystems& es, const unsigned int& lid)
+{
+  _lid = lid;
+  Real Re_number = es.parameters.get<Real>("Re number");
+  Real mass_flow = es.parameters.get<Real>("mass flow");
+  Real density = es.parameters.get<Real>("density");
+  Real viscosity = es.parameters.get<Real>("viscosity");
+  _t_period = es.parameters.get<Real>("t period");
+  char flow_bc_type[1024];
+  char flow_bc_center[1024];
+  char flow_bc_radius[1024];
+  char flow_bc_normal[1024];
+  char flow_bc_scaling[1024];
+  char flow_bc_n_fourier_modes[1024];
+  sprintf(flow_bc_type,"flow_bc_%02d_type",lid);
+  sprintf(flow_bc_center,"flow_bc_%02d_center",lid);
+  sprintf(flow_bc_radius,"flow_bc_%02d_radius",lid);
+  sprintf(flow_bc_normal,"flow_bc_%02d_normal",lid);
+  sprintf(flow_bc_scaling,"flow_bc_%02d_scaling",lid);
+  sprintf(flow_bc_n_fourier_modes,"flow_bc_%02d_n_fourier_modes",lid);
+  _bc_Radius = es.parameters.get<Real>(flow_bc_radius);
+  _bc_Type = es.parameters.get<std::string>(flow_bc_type);
+  _bc_Normal = es.parameters.get<VectorValue<Real> >(flow_bc_normal);
+  _bc_Center = es.parameters.get<Point>(flow_bc_center);
+  _scaling = es.parameters.get<Real>(flow_bc_scaling);
+  _alpha = _bc_Radius * sqrt((2.*libMesh::pi/_t_period)/(viscosity/density));
+  unsigned int n_f_modes = es.parameters.get<unsigned int>(flow_bc_n_fourier_modes);
+  _f_modes.resize(n_f_modes);
+  for (unsigned int k =0; k < n_f_modes; k++)
+  {
+     char flow_bc_f_mode[1024];
+     sprintf(flow_bc_f_mode,"flow_bc_%02d_f_mode_%02d",lid,k);
+     _f_modes[k] = es.parameters.get<Complex>(flow_bc_f_mode);
+  }
+  _u_mean = 0.;
+  if (Re_number != 0 && mass_flow == 0)
+    _u_mean = _scaling * (Re_number * viscosity)/(density * 2.0 * _bc_Radius);
+  else if (Re_number == 0 && mass_flow != 0)
+    _u_mean = _scaling * mass_flow/(density * libMesh::pi * _bc_Radius * _bc_Radius); 
 }
 
 void GnuidBCHelper::compute_dirichletDefectiveData(const Real& t, RealVectorValue& U_bc, unsigned int& lid)
@@ -144,9 +185,9 @@ void GnuidBCHelper::compute_dirichletDefectiveData(const Real& t, RealVectorValu
     Complex c_t = Complex(0, 2.*libMesh::pi*k*t/_t_period);
     u_mean_t += _u_mean * C_op::Cmul(_f_modes[k],C_op::Cexp(c_t)).real();
   }
-  if (_vel_bc_Type == "inlet")
-    U_bc.assign((-1) * _vel_bc_Normal * u_mean_t);
-  else if (_vel_bc_Type == "outlet")
-    U_bc.assign(_vel_bc_Normal * u_mean_t);
+  if (_bc_Type == "inlet")
+    U_bc.assign((-1) * _bc_Normal * u_mean_t);
+  else if (_bc_Type == "outlet")
+    U_bc.assign(_bc_Normal * u_mean_t);
   lid = _lid;
 }

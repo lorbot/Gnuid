@@ -1,7 +1,7 @@
 ######################################################################
 #
 # Template libMesh application Makefile
-LIBMESH_DIR ?= /Users/ihabia/src2/libmesh-0.9.2.1/libmesh_build
+LIBMESH_DIR ?= ~/src/libmesh-0.9.2.2/libmesh_build
 
 
 # include the library options determined by configure

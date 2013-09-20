@@ -32,7 +32,8 @@ class GnuidBCHelper
   GnuidBCHelper() {} 
   ~GnuidBCHelper() {}
   
-  void init_dirichletIOData(const EquationSystems& es, const unsigned int& lid);
+  void init_dirichletIOProfile(const EquationSystems& es, const unsigned int& lid);
+  void init_dirichletIODefective(const EquationSystems& es, const unsigned int& lid);
   void compute_dirichletIOProfile(const Point& point, const Real& t, RealVectorValue& U_bc);
   void compute_dirichletDefectiveData(const Real& t, RealVectorValue& U_bc, unsigned int& lid);
   void init_bcData(const EquationSystems& es,  const unsigned int boundary_id, std::string& bc_type);
@@ -42,10 +43,10 @@ class GnuidBCHelper
   Real _t_period;
   Real _u_mean;
   Real _alpha;
-  Real _vel_bc_Radius;
-  std::string _vel_bc_Type;
-  VectorValue<Real> _vel_bc_Normal;
-  Point _vel_bc_Center;
+  Real _bc_Radius;
+  std::string _bc_Type;
+  VectorValue<Real> _bc_Normal;
+  Point _bc_Center;
   Real _scaling;
   std::vector<Complex> _f_modes;
 };

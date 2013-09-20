@@ -264,6 +264,7 @@ void GnuidSolver::assemble_p_proj(EquationSystems& es, const std::string& system
 	  unsigned int lid;
 	  RealVectorValue U_bc;
           bcHelper.compute_dirichletDefectiveData(t, U_bc, lid);
+          fe_elem_face->reinit(elem, side);
           fe_elem_face_p->reinit(elem, side);
 	  Real u_bc_n = U_bc * qface_normals[0];
           Real u_n_jump = 0;
